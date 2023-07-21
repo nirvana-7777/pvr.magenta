@@ -67,3 +67,15 @@ msgstr ""
 msgctxt "#30015"
 msgid "Credentials"
 msgstr ""
+
+sgctxt "#30046"
+msgid "Please enter OTP to register device"
+msgstr ""
+
+msgctxt "#30047"
+msgid "Please log into telekom.de/tv-login and enter the above 8-digit code. Click OK when finished. You have "
+msgstr ""
+
+msgctxt "#30048"
+msgid "min left."
+msgstr ""

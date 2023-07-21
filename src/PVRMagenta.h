@@ -14,30 +14,27 @@
 #include "http/HttpClient.h"
 #include "rapidjson/document.h"
 
-static std::string HRTI_DOMAIN = "https://hrti.hrt.hr";
-static std::string HRTI_API = HRTI_DOMAIN + "/api/api/ott/";
-static std::string MY_MERCHANT = "aviion2";
-static std::string AVIION_DOMAIN = "https://hsapi.aviion.tv";
-static std::string AVIION_API = AVIION_DOMAIN + "/Client.svc/json/";
+static const std::string GUEST_URL = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
 
-struct HrtiChannel
+struct MagentaChannel
 {
+
   bool bRadio;
   bool bArchive;
   int iUniqueId;
-  std::string referenceID; // HRTI_ID
+  int mediaId;
   int iChannelNumber; //position
   std::string strChannelName;
   std::string strIconPath;
   std::string strStreamURL;
 };
 
-class ATTR_DLL_LOCAL CPVRHrti : public kodi::addon::CAddonBase,
+class ATTR_DLL_LOCAL CPVRMagenta : public kodi::addon::CAddonBase,
                                 public kodi::addon::CInstancePVRClient
 {
 public:
-  CPVRHrti();
-  ~CPVRHrti() override;
+  CPVRMagenta();
+  ~CPVRMagenta() override;
 
   PVR_ERROR GetBackendName(std::string& name) override;
   PVR_ERROR GetBackendVersion(std::string& version) override;
@@ -91,26 +88,36 @@ public:
 
 protected:
   std::string GetRecordingURL(const kodi::addon::PVRRecording& recording);
-  bool GetChannel(const kodi::addon::PVRChannel& channel, HrtiChannel& myChannel);
+  bool GetChannel(const kodi::addon::PVRChannel& channel, MagentaChannel& myChannel);
 
 private:
   PVR_ERROR CallMenuHook(const kodi::addon::PVRMenuhook& menuhook);
 
   void SetStreamProperties(std::vector<kodi::addon::PVRStreamProperty>& properties,
                            const std::string& url,
-                           bool realtime, bool playTimeshiftBuffer, const std::string& license);
+                           bool realtime, bool playTimeshiftBuffer);
 
-  std::vector<HrtiChannel> m_channels;
-
+  std::vector<MagentaChannel> m_channels;
+/*
   std::string m_drmid;
   std::string m_sessionid;
   std::string m_ipaddress;
   std::string m_token;
   std::string m_deviceid;
-
+*/
   HttpClient *m_httpClient;
   CSettings* m_settings;
 
+  bool MagentaGuestLogin();
+  bool MagentaDTAuthenticate();
+  bool MagentaAuthenticate();
+  bool LoadChannels();
+
+  std::string m_licence_url;
+  std::string m_ca_device_id;
+  std::string m_epg_https_url;
+  std::string m_sam_service_url;
+/*
   bool HrtiLogin();
   bool GetIpAddress();
   bool GrantAccess();
@@ -118,6 +125,8 @@ private:
   bool LoadChannels();
   bool AuthorizeSession(std::string ref_id, std::string drm_id);
   std::string GetLicense(std::string drm_id, std::string user_id);
+*/
+//  std::string m_csrfToken;
 //  std::string ltrim(const std::string &s);
 //  std::string rtrim(const std::string &s);
 //  std::string trim(const std::string &s);

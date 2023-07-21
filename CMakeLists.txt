@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(pvr.hrti)
+project(pvr.magenta)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR})
 
@@ -10,28 +10,28 @@ include_directories(${KODI_INCLUDE_DIR}/.. # Hack way with "/..", need bigger Ko
                     ${RAPIDJSON_INCLUDE_DIRS}
                     )
 
-set(PVRHRTI_SOURCES
+set(PVRMAGENTA_SOURCES
   src/http/Curl.cpp
   src/http/HttpClient.cpp
   src/Utils.cpp
   src/md5.cpp
   src/Base64.cpp
   src/Settings.cpp
-  src/PVRHrti.cpp
+  src/PVRMagenta.cpp
 )
 
-set(PVRHRTI_HEADERS
+set(PVRMAGENTA_HEADERS
   src/http/Curl.h
   src/http/HttpClient.h
   src/Utils.h
   src/md5.h
   src/Base64.h
   src/Settings.h
-  src/PVRHrti.h
+  src/PVRMagenta.h
 )
 
-addon_version(pvr.hrti HRTI)
+addon_version(pvr.magenta MAGENTA)
 
-build_addon(pvr.hrti PVRHRTI DEPLIBS)
+build_addon(pvr.magenta PVRMAGENTA DEPLIBS)
 
 include(CPack)

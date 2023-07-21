@@ -5,9 +5,9 @@
 #include <kodi/AddonBase.h>
 #include "../Settings.h"
 
-static const std::string HRTI_USER_AGENT = std::string("Kodi/")
-    + std::string(STR(KODI_VERSION)) + std::string(" pvr.hrti/")
-    + std::string(STR(HRTI_VERSION));
+static const std::string MAGENTA_USER_AGENT = std::string("Kodi/")
+    + std::string(STR(KODI_VERSION)) + std::string(" pvr.magenta/")
+    + std::string(STR(MAGENTA_VERSION));
 /*
 HttpClient::HttpClient(ParameterDB *parameterDB):
   m_parameterDB(parameterDB)
@@ -103,18 +103,14 @@ std::string HttpClient::HttpPost(const std::string& url, const std::string& post
 std::string HttpClient::HttpRequest(const std::string& action, const std::string& url, const std::string& postData, int &statusCode)
 {
   Curl curl;
-  std::string ipaddress = m_settings->GetHrtiIpAddress();
-  std::string token = m_settings->GetHrtiToken();
-  std::string deviceid = m_settings->GetHrtiDeviceID();
 
-  curl.AddHeader("Authorization", "Client " + token);
-  curl.AddHeader("User-Agent", HRTI_USER_AGENT);
-  curl.AddHeader("Devicetypeid", "6");
-  curl.AddHeader("Deviceid", deviceid);
-  curl.AddHeader("Ipaddress", ipaddress);
-//  curl.AddHeader("Origin", HRTI_DOMAIN);
-  curl.AddHeader("Operatorreferenceid", "hrt");
-  curl.AddHeader("Content-Type", "application/json");
+  curl.AddHeader("User-Agent", MAGENTA_USER_AGENT);
+  if (url.find("oauth2/tokens") != std::string::npos) {
+    curl.AddHeader("Content-Type", "application/x-www-form-urlencoded");
+  } else {
+    curl.AddHeader("Content-Type", "application/json");
+  }
+  curl.AddHeader("X_CSRFToken", m_settings->GetMagentaCSRFToken());
 /*
   curl.AddOption("acceptencoding", "gzip,deflate");
 
@@ -143,6 +139,9 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
 */
   std::string content = HttpRequestToCurl(curl, action, url, postData, statusCode);
 
+
+
+
   if (statusCode >= 400 || statusCode < 200) {
     kodi::Log(ADDON_LOG_ERROR, "Open URL failed with %i.", statusCode);
     if (m_statusCodeHandler != nullptr) {
@@ -150,23 +149,6 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
     }
     return "";
   }
-/*
-  std::string sessionId = curl.GetCookie("beaker.session.id");
-  if (!sessionId.empty() && m_beakerSessionId != sessionId)
-  {
-    kodi::Log(ADDON_LOG_DEBUG, "Got new beaker.session.id: %s..",
-        sessionId.substr(0, 5).c_str());
-    m_beakerSessionId = sessionId;
-  }
-
-  std::string zattooSession = curl.GetCookie("zattoo.session");
-  if (!zattooSession.empty() && m_zattooSession != zattooSession)
-  {
-    kodi::Log(ADDON_LOG_DEBUG, "Got new zattooSession: %s..", zattooSession.substr(0, 5).c_str());
-    m_zattooSession = zattooSession;
-    m_parameterDB->Set("zattooSession", zattooSession);
-  }
-*/
   return content;
 }
 

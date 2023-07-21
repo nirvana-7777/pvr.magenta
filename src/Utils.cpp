@@ -108,13 +108,12 @@ time_t Utils::StringToTime(const std::string &timeString)
   struct tm tm{};
 
   int year, month, day, h, m, s, tzh, tzm;
-  if (sscanf(timeString.c_str(), "%d-%d-%dT%d:%d:%d%d", &year, &month, &day, &h,
-      &m, &s, &tzh) < 7)
+  if (sscanf(timeString.c_str(), "%d-%d-%d %d:%d:%d UTC+%d:%d", &year, &month, &day, &h,
+      &m, &s, &tzh, &tzm) < 8)
   {
     tzh = 0;
+    tzm = 0;
   }
-  tzm = tzh % 100;
-  tzh = tzh / 100;
 
   tm.tm_year = year - 1900;
   tm.tm_mon = month - 1;
@@ -132,7 +131,7 @@ std::string Utils::TimeToString(const time_t time)
   char time_str[21] = "";
   std::tm* pstm = std::localtime(&time);
   // 2019-01-20T23:59:59
-  std::strftime(time_str, sizeof(time_str), "%Y-%m-%dT%H:%M:%S", pstm);
+  std::strftime(time_str, sizeof(time_str), "%Y%m%d%H%M%S", pstm);
   return time_str;
 }
 

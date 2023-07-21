@@ -75,3 +75,15 @@ msgstr ""
 msgctxt "#30012"
 msgid "PVR client menu hook item (channels) called"
 msgstr ""
+
+msgctxt "#30046"
+msgid "Please enter OTP to register device"
+msgstr "Bitte OTP eingeben um das Gerät zu registrieren"
+
+msgctxt "#30047"
+msgid "Bitte in telekom.de/tv-login einloggen und den 8-stelligen Code eingeben. Mit OK beenden. Sie haben noch "
+msgstr ""
+
+msgctxt "#30048"
+msgid "min Zeit."
+msgstr ""

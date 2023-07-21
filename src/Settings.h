@@ -18,16 +18,22 @@ public:
   ADDON_STATUS SetSetting(const std::string& settingName, const std::string& settingValue);
   bool VerifySettings();
 
-  const std::string& GetHrtiUsername() const { return m_hrtiUsername; }
-  const std::string& GetHrtiPassword() const { return m_hrtiPassword; }
-  const std::string& GetHrtiIpAddress() const { return m_hrtiIpAddress; }
-  const std::string& GetHrtiToken() const { return m_hrtiToken; }
-  const std::string& GetHrtiDeviceID() const { return m_hrtiDeviceID; }
+//  const std::string& GetMagentaUsername() const { return m_magentaUsername; }
+//  const std::string& GetMagentaPassword() const { return m_magentaPassword; }
+  const std::string& GetMagentaEPGToken() const { return m_epgToken; }
+  const std::string& GetMagentaOpenIDToken() const { return m_openidToken; }
+  const std::string& GetMagentaTVToken() const { return m_tvToken; }
+  const std::string& GetMagentaRefreshToken() const { return m_refreshToken; }
+  const std::string& GetMagentaCSRFToken() const { return m_csrfToken; }
+  const std::string& GetMagentaDeviceID() const { return m_magentaDeviceID; }
 
 private:
-  std::string m_hrtiUsername;
-  std::string m_hrtiPassword;
-  std::string m_hrtiIpAddress;
-  std::string m_hrtiToken;
-  std::string m_hrtiDeviceID;
+//  std::string m_magentaUsername;
+//  std::string m_magentaPassword;
+  std::string m_epgToken;
+  std::string m_openidToken;
+  std::string m_tvToken;
+  std::string m_refreshToken;
+  std::string m_csrfToken;
+  std::string m_magentaDeviceID;
 };
