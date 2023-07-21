@@ -18,7 +18,6 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 #include "Base64.h"
-#include <tinyxml2.h>
 
 //using namespace tinyxml2;
 //using namespace rapidjson;
