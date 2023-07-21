@@ -4,6 +4,14 @@
     <!-- general -->
     <category id="general" label="30014">
       <group id="1" label="30015">
+        <setting id="startnum" type="integer" label="30033">
+          <level>0</level>
+          <default>1</default>
+          <constraints>
+            <allowempty>false</allowempty>
+          </constraints>
+          <control type="edit" format="integer" />
+        </setting>
         <setting id="epg_token" type="string" label="30010">
           <level>4</level>
           <default></default>

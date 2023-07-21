@@ -65,6 +65,13 @@ bool CSettings::Load()
     return false;
   }
 
+  if (!kodi::addon::CheckSettingInt("startnum", m_start_num))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'startnum' setting");
+    return false;
+  }
+
   return true;
 }
 

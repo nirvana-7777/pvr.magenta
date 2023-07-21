@@ -68,6 +68,10 @@ msgctxt "#30015"
 msgid "Credentials"
 msgstr ""
 
+msgctxt "#30033"
+msgid "First channel number"
+msgstr ""
+
 sgctxt "#30046"
 msgid "Please enter OTP to register device"
 msgstr ""

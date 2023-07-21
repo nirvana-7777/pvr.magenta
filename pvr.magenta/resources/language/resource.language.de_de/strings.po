@@ -76,6 +76,10 @@ msgctxt "#30012"
 msgid "PVR client menu hook item (channels) called"
 msgstr ""
 
+msgctxt "#30033"
+msgid "First channel number"
+msgstr "Erste Sendernummer"
+
 msgctxt "#30046"
 msgid "Please enter OTP to register device"
 msgstr "Bitte OTP eingeben um das Gerät zu registrieren"
