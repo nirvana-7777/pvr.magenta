@@ -334,7 +334,7 @@ bool CPVRMagenta::LoadChannels()
   }
   const rapidjson::Value& channels = doc["channellist"];
 
-  int startnum = 0;
+  int startnum = m_settings->GetStartNum();
   for (rapidjson::Value::ConstValueIterator itr1 = channels.Begin();
       itr1 != channels.End(); ++itr1)
   {
@@ -375,7 +375,7 @@ bool CPVRMagenta::LoadChannels()
   }
 
   url = m_epg_https_url + "/EPG/JSON/AllChannelDynamic";
-  jsonString;
+  
   statusCode = 0;
   postData = "{\"channelIdList\":[";
 
