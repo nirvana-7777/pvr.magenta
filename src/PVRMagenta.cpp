@@ -25,8 +25,8 @@
 /***********************************************************
   * PVR Client AddOn specific public library functions
   ***********************************************************/
-
-
+static const uint8_t block_size = 16;
+/*
 std::string ltrim(const std::string &s)
 {
     size_t start = s.find_first_not_of("\"");
@@ -41,6 +41,20 @@ std::string rtrim(const std::string &s)
 
 std::string trim(const std::string &s) {
     return rtrim(ltrim(s));
+}
+*/
+std::string string_to_hex(const std::string& input)
+{
+    static const char hex_digits[] = "0123456789ABCDEF";
+
+    std::string output;
+    output.reserve(input.length() * 2);
+    for (unsigned char c : input)
+    {
+        output.push_back(hex_digits[c >> 4]);
+        output.push_back(hex_digits[c & 15]);
+    }
+    return output;
 }
 
 bool CPVRMagenta::MagentaGuestLogin()
@@ -99,6 +113,12 @@ bool CPVRMagenta::MagentaDTAuthenticate()
   }
   kodi::Log(ADDON_LOG_DEBUG, "Current DeviceID %s", m_device_id.c_str());
 
+  std::ostringstream convert;
+  for (int i = 0; i < block_size; i++) {
+      convert << (uint8_t) rand();
+  }
+  m_cnonce = convert.str();
+
   std::string url = m_epg_https_url + "/EPG/JSON/DTAuthenticate";
   std::string postData = "{\"accessToken\": \"" + m_settings->GetMagentaEPGToken() +
                           "\", \"usergroup\": \"IPTV_OTT_DT" +
@@ -127,7 +147,7 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 	                        "\"osversion\": \"7825230_3167.5736\"," +
 	                        "\"terminalvendor\": \"SHIELD Android TV\"," +
 	                        "\"preSharedKeyID\": \"NGTV000001\"," +
-	                        "\"cnonce\": \"2b020af306493d4df629f8311309cde9\"," +
+	                        "\"cnonce\": \"" + string_to_hex(m_cnonce) + "\"," +
 	                        "\"areaid\": \"1\"," +
 	                        "\"templatename\": \"NGTV\"," +
 	                        "\"subnetId\": \"4901\"}";
@@ -267,6 +287,8 @@ CPVRMagenta::CPVRMagenta() :
   m_settings->Load();
   m_httpClient = new HttpClient(m_settings);
 
+  srand(time(nullptr));
+
   if (!MagentaGuestLogin()) {
     return;
   }
@@ -375,7 +397,7 @@ bool CPVRMagenta::LoadChannels()
   }
 
   url = m_epg_https_url + "/EPG/JSON/AllChannelDynamic";
-  
+
   statusCode = 0;
   postData = "{\"channelIdList\":[";
 

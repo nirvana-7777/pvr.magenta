@@ -76,6 +76,10 @@ msgctxt "#30012"
 msgid "PVR client menu hook item (channels) called"
 msgstr ""
 
+msgctxt "#30014"
+msgid "General"
+msgstr "Allgemein"
+
 msgctxt "#30033"
 msgid "First channel number"
 msgstr "Erste Sendernummer"

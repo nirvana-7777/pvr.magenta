@@ -105,7 +105,7 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
   Curl curl;
 
   curl.AddHeader("User-Agent", MAGENTA_USER_AGENT);
-  if (url.find("oauth2/tokens") != std::string::npos) {
+  if (url.find("oauth2") != std::string::npos) {
     curl.AddHeader("Content-Type", "application/x-www-form-urlencoded");
   } else {
     curl.AddHeader("Content-Type", "application/json");

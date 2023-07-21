@@ -117,6 +117,7 @@ private:
   std::string m_ca_device_id;
   std::string m_epg_https_url;
   std::string m_sam_service_url;
+  std::string m_cnonce;
 /*
   bool HrtiLogin();
   bool GetIpAddress();

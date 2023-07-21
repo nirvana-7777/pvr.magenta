@@ -61,7 +61,7 @@ msgid "PVR client menu hook item (channels) called"
 msgstr ""
 
 msgctxt "#30014"
-msgid "Hrti"
+msgid "General"
 msgstr ""
 
 msgctxt "#30015"
