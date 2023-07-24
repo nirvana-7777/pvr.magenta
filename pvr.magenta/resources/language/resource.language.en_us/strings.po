@@ -68,6 +68,18 @@ msgctxt "#30015"
 msgid "Credentials"
 msgstr ""
 
+msgctxt "#30020"
+msgid "Hide not subscribed channels"
+msgstr ""
+
+msgctxt "#30021"
+msgid "Prefer higher resolution"
+msgstr ""
+
+msgctxt "#30022"
+msgid "Use categories"
+msgstr ""
+
 msgctxt "#30033"
 msgid "First channel number"
 msgstr ""

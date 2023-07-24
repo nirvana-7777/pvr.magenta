@@ -80,6 +80,18 @@ msgctxt "#30014"
 msgid "General"
 msgstr "Allgemein"
 
+msgctxt "#30020"
+msgid "Hide not subscribed channels"
+msgstr "Nur abonnierte Sender anzeigen"
+
+msgctxt "#30021"
+msgid "Prefer higher resolution"
+msgstr "Bessere Auflösung bevorzugen"
+
+msgctxt "#30022"
+msgid "Use categories"
+msgstr "Sender Gruppen anzeigen"
+
 msgctxt "#30033"
 msgid "First channel number"
 msgstr "Erste Sendernummer"

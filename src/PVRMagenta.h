@@ -16,6 +16,12 @@
 
 static const std::string GUEST_URL = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
 
+struct MagentaCategory
+{
+  std::string name;
+  std::string id;
+};
+
 struct MagentaChannel
 {
 
@@ -27,6 +33,7 @@ struct MagentaChannel
   std::string strChannelName;
   std::string strIconPath;
   std::string strStreamURL;
+  std::vector<long> categories;
 };
 
 class ATTR_DLL_LOCAL CPVRMagenta : public kodi::addon::CAddonBase,
@@ -98,6 +105,8 @@ private:
                            bool realtime, bool playTimeshiftBuffer);
 
   std::vector<MagentaChannel> m_channels;
+  std::vector<MagentaCategory> m_categories;
+
 /*
   std::string m_drmid;
   std::string m_sessionid;
@@ -108,6 +117,7 @@ private:
   HttpClient *m_httpClient;
   CSettings* m_settings;
 
+  bool is_better_resolution(const int alternative, const int current);
   bool MagentaGuestLogin();
   bool MagentaDTAuthenticate();
   bool MagentaAuthenticate();

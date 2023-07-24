@@ -27,6 +27,9 @@ public:
   const std::string& GetMagentaCSRFToken() const { return m_csrfToken; }
   const std::string& GetMagentaDeviceID() const { return m_magentaDeviceID; }
   const int& GetStartNum() const { return m_start_num; }
+  const bool HideUnsubscribed() const { return m_hideunsubscribed; }
+  const bool PreferHigherResolution() const { return m_higherresolution; }
+  const bool IsGroupsenabled() const  { return m_enablegroups; }
 
 private:
 //  std::string m_magentaUsername;
@@ -38,4 +41,7 @@ private:
   std::string m_csrfToken;
   std::string m_magentaDeviceID;
   int m_start_num;
+  bool m_hideunsubscribed;
+  bool m_higherresolution;
+  bool m_enablegroups;
 };

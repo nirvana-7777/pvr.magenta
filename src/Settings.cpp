@@ -72,6 +72,27 @@ bool CSettings::Load()
     return false;
   }
 
+  if (!kodi::addon::CheckSettingBoolean("hideunsubscribed", m_hideunsubscribed))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'hideunsubscribed' setting");
+    return false;
+  }
+
+  if (!kodi::addon::CheckSettingBoolean("higherresolution", m_higherresolution))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'higherresolution' setting");
+    return false;
+  }
+
+  if (!kodi::addon::CheckSettingBoolean("enablegroups", m_enablegroups))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'enablegroups' setting");
+    return false;
+  }
+
   return true;
 }
 

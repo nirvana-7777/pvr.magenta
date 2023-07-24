@@ -57,6 +57,20 @@ std::string string_to_hex(const std::string& input)
     return output;
 }
 
+bool CPVRMagenta::is_better_resolution(const int alternative, const int current)
+{
+  if (m_settings->PreferHigherResolution()) {
+    if (alternative > current) {
+      return true;
+    }
+  } else {
+    if ((alternative < current) || (current == -1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool CPVRMagenta::MagentaGuestLogin()
 {
   std::string jsonString;
@@ -208,7 +222,7 @@ bool CPVRMagenta::MagentaAuthenticate()
       std::string expires = Utils::JsonStringOrEmpty(doc, "expires_in");
       std::string interval = Utils::JsonStringOrEmpty(doc, "interval");
 
-      std::string text = "\n" + otp + "\n\n" + kodi::addon::GetLocalizedString(30047) + expires + kodi::addon::GetLocalizedString(30048) + "\n";
+      std::string text = "\n" + otp + "\n\n" + kodi::addon::GetLocalizedString(30047) + std::to_string((stoi(expires)/60)) + kodi::addon::GetLocalizedString(30048) + "\n";
       kodi::gui::dialogs::OK::ShowAndGetInput(kodi::addon::GetLocalizedString(30046), text);
 
       url = m_sam_service_url + "/oauth2/tokens";
@@ -356,7 +370,7 @@ bool CPVRMagenta::LoadChannels()
   }
   const rapidjson::Value& channels = doc["channellist"];
 
-  int startnum = m_settings->GetStartNum();
+  int startnum = m_settings->GetStartNum()-1;
   for (rapidjson::Value::ConstValueIterator itr1 = channels.Begin();
       itr1 != channels.End(); ++itr1)
   {
@@ -381,14 +395,34 @@ bool CPVRMagenta::LoadChannels()
       }
     }
 
-    const rapidjson::Value& physicals = channelItem["physicalChannels"];
-    for (rapidjson::Value::ConstValueIterator itr2 = physicals.Begin();
-        itr2 != physicals.End(); ++itr2)
-    {
-      const rapidjson::Value& physicalItem = (*itr2);
+    if (channelItem.HasMember("physicalChannels")) {
+      int current_mediaid = 0;
+      int current_definition = -1;
 
-      if ((Utils::JsonStringOrEmpty(physicalItem, "fileFormat") == "4") && (Utils::JsonStringOrEmpty(physicalItem, "definition") == "1")) {
-        magenta_channel.mediaId = stoi(Utils::JsonStringOrEmpty(physicalItem, "mediaId"));
+      const rapidjson::Value& physicals = channelItem["physicalChannels"];
+      for (rapidjson::Value::ConstValueIterator itr2 = physicals.Begin();
+          itr2 != physicals.End(); ++itr2)
+      {
+        const rapidjson::Value& physicalItem = (*itr2);
+
+        if ((Utils::JsonStringOrEmpty(physicalItem, "fileFormat") == "4") && (is_better_resolution(stoi(Utils::JsonStringOrEmpty(physicalItem, "definition")), current_definition))) {
+          current_mediaid = stoi(Utils::JsonStringOrEmpty(physicalItem, "mediaId"));
+          current_definition = stoi(Utils::JsonStringOrEmpty(physicalItem, "definition"));
+        }
+      }
+      if (current_mediaid != 0) {
+        magenta_channel.mediaId = current_mediaid;
+      }
+    }
+
+    if (channelItem.HasMember("categoryIds")) {
+      long categoryId;
+      const rapidjson::Value& categories = channelItem["categoryIds"];
+      for (rapidjson::SizeType i = 0; i < categories.Size(); i++)
+      {
+        std::string cat = categories[i].GetString();
+        categoryId = stol(cat);
+        magenta_channel.categories.emplace_back(categoryId);
       }
     }
 
@@ -491,7 +525,7 @@ PVR_ERROR CPVRMagenta::GetCapabilities(kodi::addon::PVRCapabilities& capabilitie
   capabilities.SetSupportsEPG(true);
   capabilities.SetSupportsTV(true);
   capabilities.SetSupportsRadio(false);
-  capabilities.SetSupportsChannelGroups(false);
+  capabilities.SetSupportsChannelGroups(m_settings->IsGroupsenabled());
   capabilities.SetSupportsRecordings(false);
   capabilities.SetSupportsRecordingsDelete(false);
   capabilities.SetSupportsRecordingsUndelete(false);
@@ -700,7 +734,7 @@ PVR_ERROR CPVRMagenta::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSe
   for (const auto& channel : m_channels)
   {
 
-    if (channel.bRadio == bRadio)
+    if ((channel.bRadio == bRadio) && ((!m_settings->HideUnsubscribed()) || (!channel.strStreamURL.empty())))
     {
       kodi::addon::PVRChannel kodiChannel;
 
@@ -733,6 +767,11 @@ PVR_ERROR CPVRMagenta::GetChannelStreamProperties(
 
 PVR_ERROR CPVRMagenta::GetChannelGroupsAmount(int& amount)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  amount = static_cast<int>(m_categories.size());
+  std::string amount_str = std::to_string(amount);
+  kodi::Log(ADDON_LOG_DEBUG, "Groups Amount: [%s]", amount_str.c_str());
+
   return PVR_ERROR_NO_ERROR;
 }
 

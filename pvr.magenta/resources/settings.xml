@@ -12,6 +12,21 @@
           </constraints>
           <control type="edit" format="integer" />
         </setting>
+        <setting id="hideunsubscribed" type="boolean" label="30020">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="higherresolution" type="boolean" label="30021">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="enablegroups" type="boolean" label="30022">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
         <setting id="epg_token" type="string" label="30010">
           <level>4</level>
           <default></default>
