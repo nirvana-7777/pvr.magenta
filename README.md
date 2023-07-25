@@ -2,7 +2,7 @@
 [![Build and run tests](https://github.com/nirvana-7777/pvr.magenta/actions/workflows/build.yml/badge.svg?branch=Nexus)](https://github.com/nirvana-7777/pvr.magenta/actions/workflows/build.yml)
 
 # Magenta PVR client for Kodi
-This is a Magenta PVR client addon for Kodi. It provides Kodi integration for the streaming provider [Magenta TV](https://www.telekom.de/magenta-tv). A user account / paid subscription is required to use this addon. The content is geo-blocked and DRM protected.
+This is a Magenta PVR client addon for Kodi. It provides Kodi integration for the streaming provider [Magenta TV](https://www.telekom.de/magenta-tv). A user account / paid subscription is required to use this addon. The content is geo-blocked and DRM protected. Therefore it requires inputstream adaptive in combination with widevine.
 
 ## Features
 - Live TV
@@ -25,7 +25,8 @@ This is a Magenta PVR client addon for Kodi. It provides Kodi integration for th
 
 - Tested building it for Linux and Android / x86 and aarch64
 - Depends on inputstream addon
--
+- Depends on widevine
+
 ##### Useful links
 
 * [Kodinerds Support Thread](https://www.kodinerds.net/thread/63437-magenta-tv-addon/)
