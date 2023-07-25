@@ -15,11 +15,20 @@
 #include "rapidjson/document.h"
 
 static const std::string GUEST_URL = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
-
+/*
+struct MagentaCategoryChannel
+{
+  int id;
+  int position;
+};
+*/
 struct MagentaCategory
 {
+  int position;
   std::string name;
-  std::string id;
+  long id;
+  bool isRadio;
+  std::vector<int> channels;
 };
 
 struct MagentaChannel
@@ -33,7 +42,7 @@ struct MagentaChannel
   std::string strChannelName;
   std::string strIconPath;
   std::string strStreamURL;
-  std::vector<long> categories;
+//  std::vector<long> categories;
 };
 
 class ATTR_DLL_LOCAL CPVRMagenta : public kodi::addon::CAddonBase,
@@ -107,13 +116,6 @@ private:
   std::vector<MagentaChannel> m_channels;
   std::vector<MagentaCategory> m_categories;
 
-/*
-  std::string m_drmid;
-  std::string m_sessionid;
-  std::string m_ipaddress;
-  std::string m_token;
-  std::string m_deviceid;
-*/
   HttpClient *m_httpClient;
   CSettings* m_settings;
 
@@ -121,6 +123,8 @@ private:
   bool MagentaGuestLogin();
   bool MagentaDTAuthenticate();
   bool MagentaAuthenticate();
+  bool AddGroupChannel(const long groupid, const int channelid);
+  bool GetCategories();
   bool LoadChannels();
 
   std::string m_licence_url;
@@ -128,17 +132,4 @@ private:
   std::string m_epg_https_url;
   std::string m_sam_service_url;
   std::string m_cnonce;
-/*
-  bool HrtiLogin();
-  bool GetIpAddress();
-  bool GrantAccess();
-  bool RegisterDevice();
-  bool LoadChannels();
-  bool AuthorizeSession(std::string ref_id, std::string drm_id);
-  std::string GetLicense(std::string drm_id, std::string user_id);
-*/
-//  std::string m_csrfToken;
-//  std::string ltrim(const std::string &s);
-//  std::string rtrim(const std::string &s);
-//  std::string trim(const std::string &s);
 };

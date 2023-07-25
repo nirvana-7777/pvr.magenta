@@ -4,7 +4,11 @@
   version="20.5.0"
   name="Magenta PVR Client"
   provider-name="Nirvana">
-  <requires>@ADDON_DEPENDS@</requires>
+  <requires>
+    @ADDON_DEPENDS@
+    <import addon="inputstream.adaptive" minversion="2.4.2"/>
+    <import addon="script.module.inputstreamhelper" version="0.5.8"/>
+  </requires>
   <extension
     point="kodi.pvrclient"
     library_@PLATFORM@="@LIBRARY_FILENAME@"/>

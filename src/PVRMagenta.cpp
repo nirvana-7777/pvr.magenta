@@ -12,37 +12,17 @@
 
 #include <kodi/General.h>
 #include <kodi/gui/dialogs/OK.h>
-//#include <tinyxml2.h>
 #include "Utils.h"
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
-#include "Base64.h"
-
-//using namespace tinyxml2;
-//using namespace rapidjson;
+//#include "Base64.h"
 
 /***********************************************************
   * PVR Client AddOn specific public library functions
   ***********************************************************/
 static const uint8_t block_size = 16;
-/*
-std::string ltrim(const std::string &s)
-{
-    size_t start = s.find_first_not_of("\"");
-    return (start == std::string::npos) ? "" : s.substr(start);
-}
 
-std::string rtrim(const std::string &s)
-{
-    size_t end = s.find_last_not_of("\"");
-    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
-}
-
-std::string trim(const std::string &s) {
-    return rtrim(ltrim(s));
-}
-*/
 std::string string_to_hex(const std::string& input)
 {
     static const char hex_digits[] = "0123456789ABCDEF";
@@ -257,41 +237,49 @@ bool CPVRMagenta::MagentaAuthenticate()
     //kodi::Log(ADDON_LOG_DEBUG, "Magenta Token returned: %s", jsonString.c_str());
   }
 
-/*
-  std::string client_id = "10LIVESAM30000004901NGTVMAGENTA000000000";
-  std::string redirect_uri = "https%3A%2F%2Fweb.magentatv.de%2Fauthn%2Fidm";
-  std::string response_type = "code";
-  std::string scope = "openid+offline_access";
+  return true;
+}
 
-  std::string url = "https://accounts.login.idm.telekom.com/oauth2/auth";
-  std::string params = "?client_id=" + client_id +
-                        "&redirect_uri=" + redirect_uri +
-                        "&response_type=" + response_type +
-                        "&scope=" + scope;
+bool CPVRMagenta::GetCategories()
+{
+  std::string jsonString;
+  int statusCode = 0;
 
-  std::string command = url + params;
-  kodi::Log(ADDON_LOG_DEBUG, "Magenta Login 1st step get: %s", command.c_str());
+  std::string url = m_epg_https_url + "/EPG/JSON/CategoryList?userContentListFilter=546411680";
+  std::string postData = "{\"offset\": 0, \"count\": 1000,"
+	                       "\"type\": \"VOD;AUDIO_VOD;VIDEO_VOD;CHANNEL;AUDIO_CHANNEL;VIDEO_CHANNEL;MIX;VAS;PROGRAM\","
+	                       "\"categoryid\": \"2000000142\"}";
 
-  std::string result = m_httpClient->HttpGet(command, statusCode);
-  kodi::Log(ADDON_LOG_DEBUG, "Magenta Login 1st step root element: %s", result.c_str());
-  htmlDoc.Parse(result.c_str(), 0);
-  //kodi::Log(ADDON_LOG_DEBUG, "Magenta Login 1st step: %s", result.c_str());
+  jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
-  tinyxml2::XMLElement* script =
-      htmlDoc.FirstChildElement( "body" )->FirstChildElement( "script" );
+  rapidjson::Document doc;
+  doc.Parse(jsonString.c_str());
+  if (doc.GetParseError())
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to get categories");
+    return false;
+  }
+  if (!doc.HasMember("categorylist")) {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to get categorylist");
+    return false;
+  }
+  const rapidjson::Value& categories = doc["categorylist"];
 
-      const char* script_text = script->GetText();
-  //    kodi::Log(ADDON_LOG_DEBUG, "Magenta Login 1st script text: %s", script_text);
-//      printf( "Name of play (part 1): %s\n", script_text );
+  int position = 0;
+  for (rapidjson::Value::ConstValueIterator itr1 = categories.Begin();
+      itr1 != categories.End(); ++itr1)
+  {
+    const rapidjson::Value& categoryItem = (*itr1);
 
-  //tinyxml2::XMLElement* pRootElement = htmlDoc.RootElement();
-//  if (pRootElement == nullptr) {
-//    kodi::Log(ADDON_LOG_DEBUG, "Magenta Login 1st step root element: error");
-//  } else {
-//    kodi::Log(ADDON_LOG_DEBUG, "Magenta Login 1st step root element: %s", pRootElement->Value());
-//  }
-*/
+    MagentaCategory magenta_category;
 
+    magenta_category.position = ++position;
+    magenta_category.name = Utils::JsonStringOrEmpty(categoryItem, "name");
+    magenta_category.id = std::stol(Utils::JsonStringOrEmpty(categoryItem, "id"));
+    magenta_category.isRadio = false;
+
+    m_categories.emplace_back(magenta_category);
+  }
   return true;
 }
 
@@ -309,7 +297,25 @@ CPVRMagenta::CPVRMagenta() :
   if (!MagentaAuthenticate()) {
     return;
   }
+  if (m_settings->IsGroupsenabled()) {
+    if (!GetCategories()) {
+      return;
+    }
+  }
   LoadChannels();
+}
+
+bool CPVRMagenta::AddGroupChannel(const long groupid, const int channelid)
+{
+  for (auto& cgroup : m_categories)
+  {
+    if (cgroup.id != groupid)
+      continue;
+
+    cgroup.channels.emplace_back(channelid);
+    return true;
+  }
+  return false;
 }
 
 CPVRMagenta::~CPVRMagenta()
@@ -422,7 +428,7 @@ bool CPVRMagenta::LoadChannels()
       {
         std::string cat = categories[i].GetString();
         categoryId = stol(cat);
-        magenta_channel.categories.emplace_back(categoryId);
+        AddGroupChannel(categoryId, magenta_channel.iUniqueId);
       }
     }
 
@@ -629,7 +635,7 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
     std::string url = m_epg_https_url + "/EPG/JSON/PlayBillList?userContentFilter=-375463788";
 
     jsonEpg = m_httpClient->HttpPost(url, postData, statusCode);
-    kodi::Log(ADDON_LOG_DEBUG, "GetProgramme returned: code: %i %s", statusCode, jsonEpg.c_str());
+//    kodi::Log(ADDON_LOG_DEBUG, "GetProgramme returned: code: %i %s", statusCode, jsonEpg.c_str());
 
     rapidjson::Document epgDoc;
     epgDoc.Parse(jsonEpg.c_str());
@@ -680,7 +686,28 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
           }
         }
       }
-
+      std::string genres = Utils::JsonStringOrEmpty(epgItem,"genres");
+      if (genres != "") {
+        tag.SetGenreType(EPG_GENRE_USE_STRING);
+        tag.SetGenreDescription(genres);
+      }
+      std::string subname = Utils::JsonStringOrEmpty(epgItem,"subName");
+      if (subname != "") {
+        tag.SetEpisodeName(subname);
+      }
+      std::string season = Utils::JsonStringOrEmpty(epgItem, "seasonNum");
+      if (season != "") {
+        tag.SetSeriesNumber(std::stoi(season));
+      }
+      std::string episode = Utils::JsonStringOrEmpty(epgItem, "subNum");
+      if (episode != "") {
+        tag.SetEpisodeNumber(std::stoi(episode));
+        tag.SetFlags(EPG_TAG_FLAG_IS_SERIES);
+      }
+      std::string rating = Utils::JsonStringOrEmpty(epgItem, "ratingid");
+      if (episode != "-1") {
+          tag.SetParentalRating(std::stoi(rating));
+      }
       results.Add(tag);
     }
   }
@@ -777,12 +804,47 @@ PVR_ERROR CPVRMagenta::GetChannelGroupsAmount(int& amount)
 
 PVR_ERROR CPVRMagenta::GetChannelGroups(bool bRadio, kodi::addon::PVRChannelGroupsResultSet& results)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  std::vector<MagentaCategory>::iterator it;
+  for (it = m_categories.begin(); it != m_categories.end(); ++it)
+  {
+    kodi::addon::PVRChannelGroup kodiGroup;
+
+    if (bRadio == it->isRadio) {
+      kodiGroup.SetPosition(it->position);
+      kodiGroup.SetIsRadio(bRadio); /* is radio group */
+      kodiGroup.SetGroupName(it->name);
+
+      results.Add(kodiGroup);
+      kodi::Log(ADDON_LOG_DEBUG, "Group added: %s at position %u", it->name.c_str(), it->position);
+    }
+  }
   return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR CPVRMagenta::GetChannelGroupMembers(const kodi::addon::PVRChannelGroup& group,
                                            kodi::addon::PVRChannelGroupMembersResultSet& results)
 {
+  for (const auto& cgroup : m_categories)
+  {
+    if (cgroup.name != group.GetGroupName())
+      continue;
+
+    int position = 0;
+    for (const auto& channel : cgroup.channels)
+    {
+      kodi::addon::PVRChannelGroupMember kodiGroupMember;
+
+      kodiGroupMember.SetGroupName(group.GetGroupName());
+      kodiGroupMember.SetChannelUniqueId(channel);
+      kodiGroupMember.SetChannelNumber(++position);
+
+      results.Add(kodiGroupMember);
+    }
+    return PVR_ERROR_NO_ERROR;
+  }
+
   return PVR_ERROR_NO_ERROR;
 }
 
