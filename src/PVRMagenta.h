@@ -15,13 +15,36 @@
 #include "rapidjson/document.h"
 
 static const std::string GUEST_URL = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
-/*
-struct MagentaCategoryChannel
+static const std::string CLIENT_ID = "10LIVESAM30000004901NGTVANDROIDTV0000000";
+static const std::string psk_id1 = "TkdUVjAwMDAwMQ==";
+static const std::string psk_id2 = "QjRENUI3Q0M0RDhEOTFCRTVDRkQ1NjhFQ0VCQ0ZDMDk1RUVDN0U5RTFBRDYwNzYyODJBMDUzNjVGNkUxNkMyQw==";
+
+struct MagentaGenre
 {
-  int id;
-  int position;
+  int genreId;
+  int genreType;
+  std::string genreName;
 };
-*/
+
+struct MagentaRecording
+{
+  std::string pvrId;
+  int channelId;
+	int mediaId;
+  std::string introduce;
+  std::string beginTime;
+  std::string endTime;
+  int beginOffset;
+  int endOffset;
+  std::string pvrName;
+  std::string channelName;
+  int realRecordLength;
+  std::string picture;
+  int bookmarkTime;
+  std::vector<int> genres;
+  int deleteMode;
+};
+
 struct MagentaCategory
 {
   int position;
@@ -115,6 +138,8 @@ private:
 
   std::vector<MagentaChannel> m_channels;
   std::vector<MagentaCategory> m_categories;
+  std::vector<MagentaRecording> m_recordings;
+  std::vector<MagentaGenre> m_genres;
 
   HttpClient *m_httpClient;
   CSettings* m_settings;
@@ -125,6 +150,8 @@ private:
   bool MagentaAuthenticate();
   bool AddGroupChannel(const long groupid, const int channelid);
   bool GetCategories();
+  bool GetRecordings();
+  bool GetGenreIds();
   bool LoadChannels();
 
   std::string m_licence_url;
@@ -132,4 +159,9 @@ private:
   std::string m_epg_https_url;
   std::string m_sam_service_url;
   std::string m_cnonce;
+  std::string m_userContentListFilter;
+  std::string m_userContentFilter;
+  std::string m_encryptToken;
+  std::string m_userID;
+  std::string m_session_key;
 };

@@ -16,7 +16,9 @@
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
-//#include "Base64.h"
+#include "sha256.h"
+#include "hmac.h"
+#include "Base64.h"
 
 /***********************************************************
   * PVR Client AddOn specific public library functions
@@ -35,6 +37,23 @@ std::string string_to_hex(const std::string& input)
         output.push_back(hex_digits[c & 15]);
     }
     return output;
+}
+
+std::string GetPictureFromItem(const rapidjson::Value& item)
+{
+  if (item.HasMember("pictures")) {
+    const rapidjson::Value& images = item["pictures"];
+    for (rapidjson::Value::ConstValueIterator itr2 = images.Begin();
+        itr2 != images.End(); ++itr2)
+    {
+      const rapidjson::Value& imageItem = (*itr2);
+
+      if (Utils::JsonStringOrEmpty(imageItem, "imageType") == "17") {
+        return Utils::JsonStringOrEmpty(imageItem, "href");
+      }
+    }
+  }
+  return "";
 }
 
 bool CPVRMagenta::is_better_resolution(const int alternative, const int current)
@@ -111,7 +130,8 @@ bool CPVRMagenta::MagentaDTAuthenticate()
   for (int i = 0; i < block_size; i++) {
       convert << (uint8_t) rand();
   }
-  m_cnonce = convert.str();
+  m_cnonce = string_to_hex(convert.str());
+  std::transform(m_cnonce.begin(), m_cnonce.end(), m_cnonce.begin(), ::tolower);
 
   std::string url = m_epg_https_url + "/EPG/JSON/DTAuthenticate";
   std::string postData = "{\"accessToken\": \"" + m_settings->GetMagentaEPGToken() +
@@ -140,8 +160,8 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 	                        "\"softwareVersion\": \"11\"," +
 	                        "\"osversion\": \"7825230_3167.5736\"," +
 	                        "\"terminalvendor\": \"SHIELD Android TV\"," +
-	                        "\"preSharedKeyID\": \"NGTV000001\"," +
-	                        "\"cnonce\": \"" + string_to_hex(m_cnonce) + "\"," +
+	                        "\"preSharedKeyID\": \"" + base64_decode(psk_id1) + "\"," +
+	                        "\"cnonce\": \"" + m_cnonce + "\"," +
 	                        "\"areaid\": \"1\"," +
 	                        "\"templatename\": \"NGTV\"," +
 	                        "\"subnetId\": \"4901\"}";
@@ -157,7 +177,10 @@ bool CPVRMagenta::MagentaDTAuthenticate()
     return false;
   }
 //  kodi::Log(ADDON_LOG_DEBUG, "Magenta Authenticate returned: %s", jsonString.c_str());
-
+  if (!doc.HasMember("retcode")) {
+    kodi::Log(ADDON_LOG_DEBUG, "Failed to authenticate - np retcode received");
+    return false;
+  }
   std::string retcode = Utils::JsonStringOrEmpty(doc, "retcode");
   if (retcode == "0") {
     m_settings->SetSetting("csrftoken", Utils::JsonStringOrEmpty(doc, "csrfToken"));
@@ -165,6 +188,19 @@ bool CPVRMagenta::MagentaDTAuthenticate()
     m_licence_url = Utils::JsonStringOrEmpty(ca_verimatrix, "multiRightsWidevine");
     const rapidjson::Value& ca_device = doc["caDeviceInfo"][0];
     m_ca_device_id = Utils::JsonStringOrEmpty(ca_device, "VUID");
+    m_userID = Utils::JsonStringOrEmpty(doc, "userID");
+    m_encryptToken = Utils::JsonStringOrEmpty(doc, "encryptToken");
+    m_userContentFilter = Utils::JsonStringOrEmpty(doc, "userContentFilter");
+    m_userContentListFilter = Utils::JsonStringOrEmpty(doc, "userContentListFilter");
+
+    std::string key = base64_decode(psk_id2) + m_userID + m_encryptToken + m_cnonce;
+    kodi::Log(ADDON_LOG_DEBUG, "Key: %s", key.c_str());
+
+    SHA256 sha256;
+    m_session_key  = sha256(key);
+    std::transform(m_session_key.begin(), m_session_key.end(), m_session_key.begin(), ::toupper);
+
+    kodi::Log(ADDON_LOG_DEBUG, "Session key: %s", m_session_key.c_str());
   } else {
     kodi::Log(ADDON_LOG_DEBUG, "Failed to authenticate with message: %s", Utils::JsonStringOrEmpty(doc, "retmsg").c_str());
     return false;
@@ -177,7 +213,7 @@ bool CPVRMagenta::MagentaAuthenticate()
   if (!MagentaDTAuthenticate()) {
     int statusCode = 0;
     std::string url = m_sam_service_url + "/oauth2/tokens";
-    std::string postData = "client_id=10LIVESAM30000004901NGTVANDROIDTV0000000&scope=ngtvepg offline_access&grant_type=refresh_token&refresh_token=" + m_settings->GetMagentaRefreshToken();
+    std::string postData = "client_id=" + CLIENT_ID + "&scope=ngtvepg offline_access&grant_type=refresh_token&refresh_token=" + m_settings->GetMagentaRefreshToken();
 
     std::string jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -186,7 +222,7 @@ bool CPVRMagenta::MagentaAuthenticate()
     if ((doc.GetParseError()) || (statusCode != 200))
     {
       url = m_sam_service_url + "/oauth2/bc-auth/start";
-      postData = "client_id=10LIVESAM30000004901NGTVANDROIDTV0000000&scope=openid offline_access&claims={\"id_token\":{\"urn:telekom.com:all\":{\"essential\":false}}}";
+      postData = "client_id=" + CLIENT_ID + "&scope=openid offline_access&claims={\"id_token\":{\"urn:telekom.com:all\":{\"essential\":false}}}";
 
       jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -206,7 +242,7 @@ bool CPVRMagenta::MagentaAuthenticate()
       kodi::gui::dialogs::OK::ShowAndGetInput(kodi::addon::GetLocalizedString(30046), text);
 
       url = m_sam_service_url + "/oauth2/tokens";
-      postData = "client_id=10LIVESAM30000004901NGTVANDROIDTV0000000&scope=openid offline_access&grant_type=urn:telekom:com:grant-type:remote-login&auth_req_id=" +
+      postData = "client_id=" + CLIENT_ID + "&scope=openid offline_access&grant_type=urn:telekom:com:grant-type:remote-login&auth_req_id=" +
                 auth_req_id + "&auth_req_sec=" + auth_req_sec + "&claims={\"id_token\":{\"urn:telekom.com:all\":{\"essential\":false}}}";
 
       jsonString = m_httpClient->HttpPost(url, postData, statusCode);
@@ -218,7 +254,7 @@ bool CPVRMagenta::MagentaAuthenticate()
         return false;
       }
       m_settings->SetSetting("openid_token", Utils::JsonStringOrEmpty(doc, "access_token"));
-      postData = "client_id=10LIVESAM30000004901NGTVANDROIDTV0000000&scope=ngtvepg offline_access&grant_type=refresh_token&refresh_token=" + Utils::JsonStringOrEmpty(doc, "refresh_token");
+      postData = "client_id=" + CLIENT_ID + "&scope=ngtvepg offline_access&grant_type=refresh_token&refresh_token=" + Utils::JsonStringOrEmpty(doc, "refresh_token");
 
       jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -245,7 +281,7 @@ bool CPVRMagenta::GetCategories()
   std::string jsonString;
   int statusCode = 0;
 
-  std::string url = m_epg_https_url + "/EPG/JSON/CategoryList?userContentListFilter=546411680";
+  std::string url = m_epg_https_url + "/EPG/JSON/CategoryList?userContentListFilter=" + m_userContentListFilter;
   std::string postData = "{\"offset\": 0, \"count\": 1000,"
 	                       "\"type\": \"VOD;AUDIO_VOD;VIDEO_VOD;CHANNEL;AUDIO_CHANNEL;VIDEO_CHANNEL;MIX;VAS;PROGRAM\","
 	                       "\"categoryid\": \"2000000142\"}";
@@ -283,6 +319,143 @@ bool CPVRMagenta::GetCategories()
   return true;
 }
 
+bool CPVRMagenta::GetRecordings()
+{
+  std::string jsonString;
+  int statusCode = 0;
+
+  std::string url = m_epg_https_url + "/EPG/JSON/QueryPVR";
+  std::string postData = "{\"count\": -1,"
+	                       "\"expandSubTask\": 2,"
+	                       "\"isFilter\": 0,"
+	                       "\"offset\": 0,"
+	                       "\"orderType\": 1,"
+	                       "\"pvrType\": 2,"
+	                       "\"type\": 0,"
+	                       "\"DTQueryType\": 0}";
+
+  jsonString = m_httpClient->HttpPost(url, postData, statusCode);
+
+  rapidjson::Document doc;
+  doc.Parse(jsonString.c_str());
+  if ((doc.GetParseError()) || (!doc.HasMember("retcode")))
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to get recordings");
+    return false;
+  }
+  if (Utils::JsonStringOrEmpty(doc, "retcode") != "0")
+  {
+    kodi::Log(ADDON_LOG_ERROR, "GetRecordings returned not 0!");
+    return false;
+  }
+  if (doc.HasMember("pvrlist"))
+  {
+    const rapidjson::Value& recordings = doc["pvrlist"];
+
+    for (rapidjson::Value::ConstValueIterator itr1 = recordings.Begin();
+        itr1 != recordings.End(); ++itr1)
+    {
+      const rapidjson::Value& recordingItem = (*itr1);
+
+      MagentaRecording magenta_recording;
+
+      magenta_recording.pvrId = Utils::JsonStringOrEmpty(recordingItem, "pvrId");
+      std::string channelId = Utils::JsonStringOrEmpty(recordingItem, "channelId");
+      if (channelId != "") {
+        magenta_recording.channelId = std::stoi(channelId);
+      }
+      std::string mediaId = Utils::JsonStringOrEmpty(recordingItem, "mediaId");
+      if (mediaId != "") {
+        magenta_recording.mediaId = std::stoi(mediaId);
+      }
+      magenta_recording.introduce = Utils::JsonStringOrEmpty(recordingItem, "introduce");
+      magenta_recording.beginTime = Utils::JsonStringOrEmpty(recordingItem, "beginTime");
+      magenta_recording.endTime = Utils::JsonStringOrEmpty(recordingItem, "endTime");
+      std::string beginoffset = Utils::JsonStringOrEmpty(recordingItem, "beginOffset");
+      if (!beginoffset.empty()) {
+        magenta_recording.beginOffset = stoi(beginoffset);
+      }
+      std::string endoffset = Utils::JsonStringOrEmpty(recordingItem, "endOffset");
+      if (!endoffset.empty()) {
+        magenta_recording.endOffset = stoi(endoffset);
+      }
+      magenta_recording.pvrName = Utils::JsonStringOrEmpty(recordingItem, "pvrName");
+      magenta_recording.channelName = Utils::JsonStringOrEmpty(recordingItem, "channelName");
+      magenta_recording.picture = GetPictureFromItem(recordingItem);
+      std::string realRecordLength = Utils::JsonStringOrEmpty(recordingItem, "realRecordLength");
+      if (realRecordLength != "") {
+        magenta_recording.realRecordLength = std::stoi(realRecordLength);
+      } else {
+        magenta_recording.realRecordLength = 0;
+      }
+      std::string bookmarkTime = Utils::JsonStringOrEmpty(recordingItem, "bookmarkTime");
+      if (bookmarkTime != "") {
+        magenta_recording.bookmarkTime = std::stoi(bookmarkTime);
+      } else {
+        magenta_recording.bookmarkTime = 0;
+      }
+      std::string deleteMode = Utils::JsonStringOrEmpty(recordingItem, "deleteMode");
+      if (deleteMode != "") {
+        magenta_recording.deleteMode = std::stoi(deleteMode);
+      } else {
+        magenta_recording.deleteMode = 0;
+      }
+      if (recordingItem.HasMember("genreIds")) {
+        const rapidjson::Value& genres = recordingItem["genreIds"];
+
+        for (rapidjson::SizeType i = 0; i < genres.Size(); i++)
+        {
+          std::string genre = genres[i].GetString();
+          magenta_recording.genres.emplace_back(stoi(genre));
+        }
+      }
+
+      m_recordings.emplace_back(magenta_recording);
+    }
+  }
+
+  return true;
+}
+
+bool CPVRMagenta::GetGenreIds()
+{
+  std::string jsonString;
+  int statusCode = 0;
+
+  std::string url = m_epg_https_url + "/EPG/JSON/GetGenreList";
+  std::string postData = "{}";
+
+  jsonString = m_httpClient->HttpPost(url, postData, statusCode);
+
+  rapidjson::Document doc;
+  doc.Parse(jsonString.c_str());
+  if ((doc.GetParseError()) || (!doc.HasMember("retcode")))
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to get GenreList");
+    return false;
+  }
+  if (Utils::JsonStringOrEmpty(doc, "retcode") != "0")
+  {
+    kodi::Log(ADDON_LOG_ERROR, "GetGenreList returned not 0!");
+    return false;
+  }
+  if (doc.HasMember("genres")) {
+    const rapidjson::Value& genres = doc["genres"];
+
+    for (rapidjson::SizeType i = 0; i < genres.Size(); i++)
+    {
+      MagentaGenre magenta_genre;
+
+      magenta_genre.genreId = stoi(Utils::JsonStringOrEmpty(genres[i], "genreId"));
+      magenta_genre.genreType = stoi(Utils::JsonStringOrEmpty(genres[i], "genreType"));
+      magenta_genre.genreName = Utils::JsonStringOrEmpty(genres[i], "genreName");
+
+      m_genres.emplace_back(magenta_genre);
+    }
+  }
+  return true;
+}
+
 CPVRMagenta::CPVRMagenta() :
   m_settings(new CSettings())
 {
@@ -302,6 +475,8 @@ CPVRMagenta::CPVRMagenta() :
       return;
     }
   }
+  GetGenreIds();
+  GetRecordings();
   LoadChannels();
 }
 
@@ -335,7 +510,7 @@ ADDON_STATUS CPVRMagenta::SetSetting(const std::string& settingName, const std::
 bool CPVRMagenta::LoadChannels()
 {
   kodi::Log(ADDON_LOG_DEBUG, "Load Magenta Channels");
-  std::string url = m_epg_https_url + "/EPG/JSON/AllChannel?userContentListFilter=546411680";
+  std::string url = m_epg_https_url + "/EPG/JSON/AllChannel?userContentListFilter=" + m_userContentListFilter;
   std::string jsonString;
   int statusCode = 0;
   std::string postData = "{\"properties\":[{"
@@ -509,7 +684,7 @@ void CPVRMagenta::SetStreamProperties(std::vector<kodi::addon::PVRStreamProperty
 
   properties.emplace_back(PVR_STREAM_PROPERTY_STREAMURL, url);
   properties.emplace_back(PVR_STREAM_PROPERTY_INPUTSTREAM, "inputstream.adaptive");
-//  properties.emplace_back(PVR_STREAM_PROPERTY_ISREALTIMESTREAM, realtime ? "true" : "false");
+  properties.emplace_back(PVR_STREAM_PROPERTY_ISREALTIMESTREAM, realtime ? "true" : "false");
 
   // MPEG DASH
 //  kodi::Log(ADDON_LOG_DEBUG, "[PLAY STREAM] dash");
@@ -532,7 +707,7 @@ PVR_ERROR CPVRMagenta::GetCapabilities(kodi::addon::PVRCapabilities& capabilitie
   capabilities.SetSupportsTV(true);
   capabilities.SetSupportsRadio(false);
   capabilities.SetSupportsChannelGroups(m_settings->IsGroupsenabled());
-  capabilities.SetSupportsRecordings(false);
+  capabilities.SetSupportsRecordings(true);
   capabilities.SetSupportsRecordingsDelete(false);
   capabilities.SetSupportsRecordingsUndelete(false);
   capabilities.SetSupportsTimers(false);
@@ -632,7 +807,7 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
 
     kodi::Log(ADDON_LOG_DEBUG, "PostData %s", postData.c_str());
 
-    std::string url = m_epg_https_url + "/EPG/JSON/PlayBillList?userContentFilter=-375463788";
+    std::string url = m_epg_https_url + "/EPG/JSON/PlayBillList?userContentFilter=" + m_userContentFilter;
 
     jsonEpg = m_httpClient->HttpPost(url, postData, statusCode);
 //    kodi::Log(ADDON_LOG_DEBUG, "GetProgramme returned: code: %i %s", statusCode, jsonEpg.c_str());
@@ -674,17 +849,9 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
       tag.SetStartTime(Utils::StringToTime(epgstart));
       tag.SetEndTime(Utils::StringToTime(epgend));
 
-      if (epgItem.HasMember("pictures")) {
-        const rapidjson::Value& images = epgItem["pictures"];
-        for (rapidjson::Value::ConstValueIterator itr2 = images.Begin();
-            itr2 != images.End(); ++itr2)
-        {
-          const rapidjson::Value& imageItem = (*itr2);
-
-          if (Utils::JsonStringOrEmpty(imageItem, "imageType") == "17") {
-            tag.SetIconPath(Utils::JsonStringOrEmpty(imageItem, "href"));
-          }
-        }
+      std::string image = GetPictureFromItem(epgItem);
+      if (!image.empty()) {
+        tag.SetIconPath(image);
       }
       std::string genres = Utils::JsonStringOrEmpty(epgItem,"genres");
       if (genres != "") {
@@ -858,11 +1025,50 @@ PVR_ERROR CPVRMagenta::GetSignalStatus(int channelUid, kodi::addon::PVRSignalSta
 
 PVR_ERROR CPVRMagenta::GetRecordingsAmount(bool deleted, int& amount)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  amount = static_cast<int>(m_recordings.size());
+  std::string amount_str = std::to_string(amount);
+  kodi::Log(ADDON_LOG_DEBUG, "Recordings Amount: [%s]", amount_str.c_str());
+
   return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR CPVRMagenta::GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet& results)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  std::vector<MagentaRecording>::iterator it;
+  for (it = m_recordings.begin(); it != m_recordings.end(); ++it)
+  {
+    kodi::addon::PVRRecording kodiRecording;
+
+    kodiRecording.SetRecordingId(it->pvrId);
+    kodiRecording.SetTitle(it->pvrName);
+    kodiRecording.SetPlot(it->introduce);
+    kodiRecording.SetChannelName(it->channelName);
+    if (!it->picture.empty()) {
+      kodiRecording.SetIconPath(it->picture);
+      kodiRecording.SetThumbnailPath(it->picture);
+      kodiRecording.SetFanartPath(it->picture);
+    }
+    if (it->realRecordLength != 0) {
+      kodiRecording.SetDuration(it->realRecordLength);
+    }
+    kodiRecording.SetLastPlayedPosition(it->bookmarkTime);
+    std::string begintime = it->beginTime;
+    begintime.insert(4,1,'-');
+    begintime.insert(7,1,'-');
+    begintime.insert(10,1,' ');
+    begintime.insert(13,1,':');
+    begintime.insert(16,1,':');
+    begintime += " UTC";
+    kodiRecording.SetRecordingTime(Utils::StringToTime(begintime));
+    kodiRecording.SetChannelType(PVR_RECORDING_CHANNEL_TYPE_TV);
+
+    results.Add(kodiRecording);
+    kodi::Log(ADDON_LOG_DEBUG, "Recording added: %s", it->pvrName.c_str());
+  }
+
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -870,6 +1076,67 @@ PVR_ERROR CPVRMagenta::GetRecordingStreamProperties(
     const kodi::addon::PVRRecording& recording,
     std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  for (const auto& current_recording : m_recordings)
+  {
+    if ( current_recording.pvrId != recording.GetRecordingId())
+      continue;
+
+    std::string checksum = hmac<SHA256>(std::to_string(current_recording.channelId), m_session_key);
+    kodi::Log(ADDON_LOG_DEBUG, "Checksum: %s", checksum.c_str());
+
+    int statusCode = 0;
+    std::string url = m_epg_https_url + "/EPG/JSON/AuthorizeAndPlay";
+    std::string postData = "{\"contentType\": \"CHANNEL\","
+	                          "\"businessType\": 8,"
+	                          "\"contentId\": \"" + std::to_string(current_recording.channelId) + "\","
+	                          "\"mediaId\": \"" + std::to_string(current_recording.mediaId) + "\","
+	                          "\"pvrId\": \"" + current_recording.pvrId + "\","
+	                          "\"checksum\": \"" + checksum + "\"}";
+
+    std::string jsonString = m_httpClient->HttpPost(url, postData, statusCode);
+
+    rapidjson::Document doc;
+    doc.Parse(jsonString.c_str());
+    if ((doc.GetParseError()) || (!doc.HasMember("retcode"))) {
+      kodi::Log(ADDON_LOG_ERROR, "Failed to AuthorizeAndPlay");
+      return PVR_ERROR_SERVER_ERROR;
+    }
+    if (Utils::JsonStringOrEmpty(doc, "retcode") != "0") {
+      if (Utils::JsonStringOrEmpty(doc, "retcode") == "-2") {
+        MagentaAuthenticate();
+        checksum = hmac<SHA256>(std::to_string(current_recording.channelId), m_session_key);
+        std::string postData = "{\"contentType\": \"CHANNEL\","
+                                "\"businessType\": 8,"
+                                "\"contentId\": \"" + std::to_string(current_recording.channelId) + "\","
+                                "\"mediaId\": \"" + std::to_string(current_recording.mediaId) + "\","
+                                "\"pvrId\": \"" + current_recording.pvrId + "\","
+                                "\"checksum\": \"" + checksum + "\"}";
+        jsonString = m_httpClient->HttpPost(url, postData, statusCode);
+        doc.Parse(jsonString.c_str());
+        if ((doc.GetParseError()) || (!doc.HasMember("retcode"))) {
+          kodi::Log(ADDON_LOG_ERROR, "Failed to AuthorizeAndPlay");
+          return PVR_ERROR_SERVER_ERROR;
+        }
+        if (Utils::JsonStringOrEmpty(doc, "retcode") != "0") {
+          kodi::Log(ADDON_LOG_ERROR, "AuthorizeAndPlay returned not 0! %s", jsonString.c_str());
+          return PVR_ERROR_SERVER_ERROR;
+        }
+      } else {
+        kodi::Log(ADDON_LOG_ERROR, "AuthorizeAndPlay returned not 0! %s", jsonString.c_str());
+        return PVR_ERROR_SERVER_ERROR;
+      }
+    }
+    std::string playUrl = Utils::JsonStringOrEmpty(doc, "playUrl");
+    if (playUrl.empty()) {
+      kodi::Log(ADDON_LOG_ERROR, "Recording playUrl was empty");
+      return PVR_ERROR_SERVER_ERROR;
+    }
+    kodi::Log(ADDON_LOG_DEBUG, "[PLAY RECORDING] url: %s", playUrl.c_str());
+
+    SetStreamProperties(properties, playUrl, false, false);
+  }
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -966,11 +1233,6 @@ bool CPVRMagenta::GetChannel(const kodi::addon::PVRChannel& channel, MagentaChan
   }
 
   return false;
-}
-
-std::string CPVRMagenta::GetRecordingURL(const kodi::addon::PVRRecording& recording)
-{
-  return "";
 }
 
 ADDONCREATOR(CPVRMagenta)

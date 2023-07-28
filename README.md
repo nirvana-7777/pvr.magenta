@@ -23,13 +23,13 @@ This is a Magenta PVR client addon for Kodi. It provides Kodi integration for th
 
 ## Notes
 
-- Tested building it for Linux and Android / x86 and aarch64
+- Tested building it for Linux/x86 and Android/aarch64
 - Depends on inputstream addon
 - Depends on widevine
 
 ##### Useful links
 
-* [Kodinerds Support Thread](https://www.kodinerds.net/thread/63437-magenta-tv-addon/)
+* [Kodinerds Support Thread](https://www.kodinerds.net/thread/77429-release-pvr-magenta/)
 * [Kodi's PVR user support](https://forum.kodi.tv/forumdisplay.php?fid=167)
 * [Kodi's PVR development support](https://forum.kodi.tv/forumdisplay.php?fid=136)
 
