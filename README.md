@@ -7,6 +7,7 @@ This is a Magenta PVR client addon for Kodi. It provides Kodi integration for th
 ## Features
 - Live TV
 - EPG
+- Recording Playback
 
 ## Build instructions
 

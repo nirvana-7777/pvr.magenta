@@ -2,3 +2,5 @@ v20.5.0
 - Initial release
 v20.6.0
 - Add Recordings Playback
+v20.6.1
+- Fix deleted recordings

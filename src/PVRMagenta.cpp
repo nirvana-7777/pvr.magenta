@@ -357,9 +357,14 @@ bool CPVRMagenta::GetRecordings()
     {
       const rapidjson::Value& recordingItem = (*itr1);
 
+      std::string pvrid = Utils::JsonStringOrEmpty(recordingItem, "pvrId");
+
+      if (pvrid.empty())
+        continue;
+
       MagentaRecording magenta_recording;
 
-      magenta_recording.pvrId = Utils::JsonStringOrEmpty(recordingItem, "pvrId");
+      magenta_recording.pvrId = pvrid;
       std::string channelId = Utils::JsonStringOrEmpty(recordingItem, "channelId");
       if (channelId != "") {
         magenta_recording.channelId = std::stoi(channelId);
@@ -708,9 +713,9 @@ PVR_ERROR CPVRMagenta::GetCapabilities(kodi::addon::PVRCapabilities& capabilitie
   capabilities.SetSupportsRadio(false);
   capabilities.SetSupportsChannelGroups(m_settings->IsGroupsenabled());
   capabilities.SetSupportsRecordings(true);
-  capabilities.SetSupportsRecordingsDelete(false);
+  capabilities.SetSupportsRecordingsDelete(true);
   capabilities.SetSupportsRecordingsUndelete(false);
-  capabilities.SetSupportsTimers(false);
+  capabilities.SetSupportsTimers(true);
   capabilities.SetSupportsRecordingsRename(false);
   capabilities.SetSupportsRecordingsLifetimeChange(false);
   capabilities.SetSupportsDescrambleInfo(false);
@@ -1142,17 +1147,46 @@ PVR_ERROR CPVRMagenta::GetRecordingStreamProperties(
 
 PVR_ERROR CPVRMagenta::GetTimerTypes(std::vector<kodi::addon::PVRTimerType>& types)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   /* TODO: Implement this to get support for the timer features introduced with PVR API 1.9.7 */
   return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 PVR_ERROR CPVRMagenta::GetTimersAmount(int& amount)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR CPVRMagenta::GetTimers(kodi::addon::PVRTimersResultSet& results)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta::AddTimer(const kodi::addon::PVRTimer& timer)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta::UpdateTimer(const kodi::addon::PVRTimer& timer)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+/*
+  if ((timer.GetTimerType() == TIMER_ONCE_MANUAL) || (timer.GetTimerType() == TIMER_ONCE_EPG))
+  {
+     one shot timer
+  }
+  */
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta::DeleteTimer(const kodi::addon::PVRTimer& timer, bool)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
   return PVR_ERROR_NO_ERROR;
 }
 

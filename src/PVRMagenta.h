@@ -114,6 +114,9 @@ public:
   PVR_ERROR GetTimerTypes(std::vector<kodi::addon::PVRTimerType>& types) override;
   PVR_ERROR GetTimersAmount(int& amount) override;
   PVR_ERROR GetTimers(kodi::addon::PVRTimersResultSet& results) override;
+  PVR_ERROR AddTimer(const kodi::addon::PVRTimer& timer) override;
+  PVR_ERROR DeleteTimer(const kodi::addon::PVRTimer& timer, bool forceDelete) override;
+  PVR_ERROR UpdateTimer(const kodi::addon::PVRTimer& timer) override;
   PVR_ERROR GetSignalStatus(int channelUid, kodi::addon::PVRSignalStatus& signalStatus) override;
   PVR_ERROR GetChannelStreamProperties(
       const kodi::addon::PVRChannel& channel,
