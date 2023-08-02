@@ -4,3 +4,7 @@ v20.6.0
 - Add Recordings Playback
 v20.6.1
 - Fix deleted recordings
+v20.7.0
+- Add single-shot timers / delete single-shot timers
+- Delete recordings
+- Restart of current event (begin of Timeshift Buffer only)

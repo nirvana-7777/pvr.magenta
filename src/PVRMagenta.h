@@ -14,6 +14,8 @@
 #include "http/HttpClient.h"
 #include "rapidjson/document.h"
 
+#define TIMER_ONCE_EPG (PVR_TIMER_TYPE_NONE + 1)
+
 static const std::string GUEST_URL = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
 static const std::string CLIENT_ID = "10LIVESAM30000004901NGTVANDROIDTV0000000";
 static const std::string psk_id1 = "TkdUVjAwMDAwMQ==";
@@ -28,6 +30,7 @@ struct MagentaGenre
 
 struct MagentaRecording
 {
+  int index;
   std::string pvrId;
   int channelId;
 	int mediaId;
@@ -54,17 +57,31 @@ struct MagentaCategory
   std::vector<int> channels;
 };
 
+struct PhysicalChannel
+{
+  int mediaId;
+  std::string externalCode;
+  int fileFormat;
+  int definition;
+  std::string playUrl;
+  bool btvenabled;
+  bool pltvenabled;
+  bool npvrenabled;
+};
+
 struct MagentaChannel
 {
 
   bool bRadio;
-  bool bArchive;
+//  bool bArchive;
   int iUniqueId;
-  int mediaId;
+//  int mediaId;
+//  int pvrMediaId;
   int iChannelNumber; //position
+  std::vector<PhysicalChannel> physicalChannels;
   std::string strChannelName;
   std::string strIconPath;
-  std::string strStreamURL;
+//  std::string strStreamURL;
 //  std::vector<long> categories;
 };
 
@@ -111,6 +128,8 @@ public:
   PVR_ERROR GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSet& results) override;
   PVR_ERROR GetRecordingsAmount(bool deleted, int& amount) override;
   PVR_ERROR GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet& results) override;
+  PVR_ERROR DeletePVR(const std::string pvrId, const bool isRecording);
+  PVR_ERROR DeleteRecording(const kodi::addon::PVRRecording& recording) override;
   PVR_ERROR GetTimerTypes(std::vector<kodi::addon::PVRTimerType>& types) override;
   PVR_ERROR GetTimersAmount(int& amount) override;
   PVR_ERROR GetTimers(kodi::addon::PVRTimersResultSet& results) override;
@@ -127,7 +146,14 @@ public:
 
   ADDON_STATUS SetSetting(const std::string& settingName,
                         const std::string& settingValue);
-
+/*
+  bool SeekTime(double time, bool backward, double& startpts) override;
+  bool CanPauseStream() override { return true; }
+  bool CanSeekStream() override { return true; }
+  bool OpenLiveStream(const kodi::addon::PVRChannel& channel) override;
+  void CloseLiveStream() override;
+  int64_t SeekLiveStream(int64_t position, int whence) override;
+*/
 protected:
   std::string GetRecordingURL(const kodi::addon::PVRRecording& recording);
   bool GetChannel(const kodi::addon::PVRChannel& channel, MagentaChannel& myChannel);
@@ -137,23 +163,31 @@ private:
 
   void SetStreamProperties(std::vector<kodi::addon::PVRStreamProperty>& properties,
                            const std::string& url,
-                           bool realtime, bool playTimeshiftBuffer);
+                           bool realtime, bool playTimeshiftBuffer, bool epgplayback);
 
   std::vector<MagentaChannel> m_channels;
   std::vector<MagentaCategory> m_categories;
   std::vector<MagentaRecording> m_recordings;
+  std::vector<MagentaRecording> m_timers;
   std::vector<MagentaGenre> m_genres;
 
   HttpClient *m_httpClient;
   CSettings* m_settings;
 
+  bool JsonRequest(const std::string& url, const std::string& postData, rapidjson::Document& doc);
   bool is_better_resolution(const int alternative, const int current);
+  bool is_pvr_allowed(const rapidjson::Value& current_item);
+  int SelectMediaId(const MagentaChannel channel, const bool npvr);
+  std::string GetPlayUrl(const MagentaChannel channel, const int mediaId);
+  bool HasStreamingUrl(const MagentaChannel channel);
   bool MagentaGuestLogin();
   bool MagentaDTAuthenticate();
   bool MagentaAuthenticate();
   bool AddGroupChannel(const long groupid, const int channelid);
+  bool ReleaseCurrentMedia();
   bool GetCategories();
-  bool GetRecordings();
+  bool GetTimersRecordings(const bool isRecording);
+  bool GetTimers();
   bool GetGenreIds();
   bool LoadChannels();
 
@@ -166,5 +200,8 @@ private:
   std::string m_userContentFilter;
   std::string m_encryptToken;
   std::string m_userID;
+  std::string m_sessionID;
   std::string m_session_key;
+  int m_currentChannelId;
+  int m_currentMediaId;
 };
