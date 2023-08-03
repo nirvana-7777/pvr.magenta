@@ -9,7 +9,7 @@ on:
 
 jobs:
   default:
-    if: github.repository == 'kodi-pvr/pvr.demo'
+    if: github.repository == 'kodi-pvr/pvr.magenta'
     runs-on: ubuntu-latest
 
     strategy:

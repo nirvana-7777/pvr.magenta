@@ -18,6 +18,10 @@
 
 static const std::string GUEST_URL = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
 static const std::string CLIENT_ID = "10LIVESAM30000004901NGTVANDROIDTV0000000";
+static const std::string USER_GROUP = "IPTV_OTT_DT";
+static const std::string TERMINALVENDOR = "SHIELD Android TV";
+static const std::string TERMINALTYPE = "TV_AndroidTV";
+static const std::string HARDWARESUPPLIER = "AndroidTV SHIELD Android TV";
 static const std::string psk_id1 = "TkdUVjAwMDAwMQ==";
 static const std::string psk_id2 = "QjRENUI3Q0M0RDhEOTFCRTVDRkQ1NjhFQ0VCQ0ZDMDk1RUVDN0U5RTFBRDYwNzYyODJBMDUzNjVGNkUxNkMyQw==";
 

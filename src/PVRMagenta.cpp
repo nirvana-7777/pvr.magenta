@@ -240,12 +240,12 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 
   std::string url = m_epg_https_url + "/EPG/JSON/DTAuthenticate";
   std::string postData = "{\"accessToken\": \"" + m_settings->GetMagentaEPGToken() +
-                          "\", \"usergroup\": \"IPTV_OTT_DT" +
+                          "\", \"usergroup\": \"" + USER_GROUP +
                           "\", \"connectType\": 1" +
 	                        ", \"userType\": \"1\"" +
                           ", \"terminalid\": \"" + m_device_id +
 	                        "\", \"mac\": \"" + m_device_id +
-	                        "\", \"terminaltype\": \"TV_AndroidTV" +
+	                        "\", \"terminaltype\": \"" + TERMINALTYPE +
                           "\", \"utcEnable\": 1" +
                           ", \"timezone\": \"Europe/Berlin" +
                           "\", \"caDeviceInfo\": [{" +
@@ -255,7 +255,7 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 		                          "\"key\": \"GUID\"," +
 		                          "\"value\": \"" + m_device_id + "\"}, {" +
                               "\"key\": \"HardwareSupplier\"," +
-                              "\"value\": \"AndroidTV SHIELD Android TV\"}, {" +
+                              "\"value\": \"" + HARDWARESUPPLIER + "\"}, {" +
                               "\"key\": \"DeviceClass\"," +
                               "\"value\": \"TV\"}, {" +
                               "\"key\": \"DeviceStorage\"," +
@@ -264,13 +264,13 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 		                          "\"value\": \"12495872000\"}]," +
 	                        "\"softwareVersion\": \"11\"," +
 	                        "\"osversion\": \"7825230_3167.5736\"," +
-	                        "\"terminalvendor\": \"SHIELD Android TV\"," +
+	                        "\"terminalvendor\": \"" + TERMINALVENDOR + "\"," +
 	                        "\"preSharedKeyID\": \"" + base64_decode(psk_id1) + "\"," +
 	                        "\"cnonce\": \"" + m_cnonce + "\"," +
 	                        "\"areaid\": \"1\"," +
 	                        "\"templatename\": \"NGTV\"," +
 	                        "\"subnetId\": \"4901\"}";
-  //kodi::Log(ADDON_LOG_DEBUG, "PostData %s", postData.c_str());
+//  kodi::Log(ADDON_LOG_DEBUG, "PostData %s", postData.c_str());
 
   std::string jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -434,9 +434,6 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
     m_timers.clear();
   }
 
-  std::string jsonString;
-  int statusCode = 0;
-
   std::string url = m_epg_https_url + "/EPG/JSON/QueryPVR";
   std::string postData = "{\"count\": -1,"
 	                       "\"expandSubTask\": 2,"
@@ -449,20 +446,11 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
   postData += (isRecording ? "0" : "1");
   postData += "}";
 
-  jsonString = m_httpClient->HttpPost(url, postData, statusCode);
-
   rapidjson::Document doc;
-  doc.Parse(jsonString.c_str());
-  if ((doc.GetParseError()) || (!doc.HasMember("retcode")))
-  {
-    kodi::Log(ADDON_LOG_ERROR, "Failed to get timers/recordings");
-    return false;
+  if (!JsonRequest(url, postData, doc)) {
+    return PVR_ERROR_FAILED;
   }
-  if (Utils::JsonStringOrEmpty(doc, "retcode") != "0")
-  {
-    kodi::Log(ADDON_LOG_ERROR, "QueryPVR returned not 0!");
-    return false;
-  }
+
   if (doc.HasMember("pvrlist"))
   {
     const rapidjson::Value& recordings = doc["pvrlist"];
