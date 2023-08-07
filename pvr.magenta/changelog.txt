@@ -8,3 +8,5 @@ v20.7.0
 - Add single-shot timers / delete single-shot timers
 - Delete recordings
 - Restart of current event (begin of Timeshift Buffer only)
+v20.7.1
+- Add device replace mechanism when 5 OTT devices are registered

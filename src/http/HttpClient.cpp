@@ -110,37 +110,12 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
   } else {
     curl.AddHeader("Content-Type", "application/json");
   }
-  curl.AddHeader("X_CSRFToken", m_settings->GetMagentaCSRFToken());
-/*
-  curl.AddOption("acceptencoding", "gzip,deflate");
-
-  std::string cookie = "";
-
-  if (!m_beakerSessionId.empty())
-  {
-    cookie += "beaker.session.id=" + m_beakerSessionId + "; ";
+  std::string csrftoken = m_settings->GetMagentaCSRFToken();
+  if (!csrftoken.empty()) {
+    curl.AddHeader("X_CSRFToken", csrftoken);
   }
 
-  if (!m_uuid.empty())
-  {
-    cookie += "uuid=" + m_uuid + "; ";
-  }
-
-  if (!m_zattooSession.empty())
-  {
-    cookie += "zattoo.session=" + m_zattooSession + "; ";
-  }
-
-  if (!cookie.empty()) {
-    curl.AddOption("Cookie", cookie);
-  }
-
-  curl.AddHeader("User-Agent", USER_AGENT);
-*/
   std::string content = HttpRequestToCurl(curl, action, url, postData, statusCode);
-
-
-
 
   if (statusCode >= 400 || statusCode < 200) {
     kodi::Log(ADDON_LOG_ERROR, "Open URL failed with %i.", statusCode);

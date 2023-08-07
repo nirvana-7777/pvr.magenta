@@ -15,15 +15,114 @@
 #include "rapidjson/document.h"
 
 #define TIMER_ONCE_EPG (PVR_TIMER_TYPE_NONE + 1)
-
-static const std::string GUEST_URL = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
-static const std::string CLIENT_ID = "10LIVESAM30000004901NGTVANDROIDTV0000000";
-static const std::string USER_GROUP = "IPTV_OTT_DT";
+static const int IPTV_STB = 0;
+static const int PC = 1;
+static const int OTT = 2;
+static const int MOBILE = 3;
+static const int OTT_STB = 5;
+static const int HYBRID_STB = 17;
+static const std::string GUEST_URL      = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
+static const std::string CLIENT_ID      = "10LIVESAM30000004901NGTVANDROIDTV0000000";
+static const std::string CLIENT_ID_WEB  = "10LIVESAM30000004901NGTVMAGENTA000000000";
+static const std::string CLIENT_ID_STICK = "10LIVESAM30000004901NGTVSTICK00000000000";
+//static const std::string USER_GROUP     = "IPTV_OTT_DT";
 static const std::string TERMINALVENDOR = "SHIELD Android TV";
-static const std::string TERMINALTYPE = "TV_AndroidTV";
+static const std::string TERMINALVENDOR_WEB = "Unknown";
+//static const std::string TERMINALVENDOR = "MagentaTV ONE";
+static const std::string TERMINALTYPE   = "TV_AndroidTV";
+static const std::string TERMINALTYPE_WEB = "WEBTV";
+//static const std::string HARDWARESUPPLIER = "AndroidTV Magenta ONE Android TV";
 static const std::string HARDWARESUPPLIER = "AndroidTV SHIELD Android TV";
-static const std::string psk_id1 = "TkdUVjAwMDAwMQ==";
-static const std::string psk_id2 = "QjRENUI3Q0M0RDhEOTFCRTVDRkQ1NjhFQ0VCQ0ZDMDk1RUVDN0U5RTFBRDYwNzYyODJBMDUzNjVGNkUxNkMyQw==";
+static const std::string HARDWARESUPPLIER_WEB = "WEB-MTV";
+static const std::string OS_VERSION = "7825230_3167.5736";
+static const std::string OS_VERSION_WEB = "Windows 10";
+static const std::string SOFTWARE_VERSION_WEB = "1.63.2";
+static const std::string SOFTWARE_VERSION = "11";
+static const std::string psk_id1        = "TkdUVjAwMDAwMQ==";
+static const std::string psk_id2        = "QjRENUI3Q0M0RDhEOTFCRTVDRkQ1NjhFQ0VCQ0ZDMDk1RUVDN0U5RTFBRDYwNzYyODJBMDUzNjVGNkUxNkMyQw==";
+static const std::string SUBNETID = "4901";
+static const std::string TEMPLATENAME = "NGTV";
+static const std::string TIMEZONE = "Europe/Berlin";
+static const std::string DEVICENAME = "Kodi PVR";
+static const std::string EPGDIR = "/EPG/JSON/";
+
+/*
+urls: {
+    authenticate: "/EPG/JSON/Authenticate",
+    bcAuthStart: "/bc-auth/start",
+    categoryList: "/EPG/JSON/CategoryList",
+    channelInfo: "/EPG/JSON/AllChannelDynamic",
+    channelList: "/EPG/JSON/AllChannel",
+    dfcc: "/EPG/JSON/QueryDFCC",
+    dtAuthenticate: "/EPG/JSON/DTAuthenticate",
+    getCustomChannelNumbers: "/EPG/JSON/GetCustomChanNo",
+    getDataVersion: "/EPG/JSON/GetDataVersion",
+    getDeviceList: "/EPG/JSON/GetDeviceList",
+    getFavorite: "/EPG/JSON/GetFavorite",
+    getGenreList: "/EPG/JSON/GetGenreList",
+    getUserSettingValue: "/EPG/JSON/GetUserSettingValue",
+    heartbit: "/EPG/JSON/HeartBit",
+    isoCodeTable: "/EPG/JSON/GetISOCodeTable",
+    login: "/JSON/Login",
+    logout: "/EPG/JSON/Logout",
+    modifyDeviceName: "/EPG/JSON/ModifyDeviceName",
+    program: {
+        details: "/EPG/JSON/ContentDetail",
+        reruns: "/EPG/JSON/QueryPlaybillByFilter",
+        vodRecos: "/EPG/recommendations/ngtv/default/i2i-vod",
+        liveRecos: "/EPG/recommendations/ngtv/default/i2i-tv"
+    },
+    programs: "/EPG/JSON/PlayBillList",
+    pvr: {
+        addBookmark: "/EPG/JSON/AddBookmark",
+        addPvr: "/EPG/JSON/AddPVR",
+        authorizeAndPlay: "/EPG/JSON/AuthorizeAndPlay",
+        deleteBookmark: "/EPG/JSON/DeleteBookmark",
+        deletePvr: "/EPG/JSON/DeletePVR",
+        getAll: "/EPG/JSON/QueryPVR",
+        queryPvrById: "/EPG/JSON/QueryPVRById",
+        queryBookmark: "/EPG/JSON/QueryBookmark",
+        queryPVRSpace: "/EPG/JSON/QueryPVRSpace",
+        periodPvrMgmt: "/EPG/JSON/PeriodPVRMgmt",
+        updatePvr: "/EPG/JSON/UpdatePVR",
+        updatePvrList: "/EPG/JSON/UpdatePVRList"
+    },
+    replaceDevice: "/EPG/JSON/ReplaceDevice",
+    search: "/EPG/search/ngtv/select",
+    setCustomChannelNumber: "/EPG/JSON/SetCustomChanNo",
+    setTdsFlags: "/EPG/JSON/TDSSet",
+    setUserSettingValue: "/EPG/JSON/SetUserSettingValue",
+    streamManagement: {
+        dcp: {
+            streams: "/streams",
+            terminals: "/terminals"
+        },
+        huawei: {
+            acquireStream: "/EPG/JSON/Play",
+            heartbit: "/EPG/JSON/PlayHeartbit",
+            releaseStream: "/EPG/JSON/ReleasePlaySession"
+        }
+    },
+    token: "/tokens",
+    updateFavorite: "/EPG/JSON/FavoriteManagement",
+    userSettings: "/EPG/JSON/QuerySubscriberEx"
+},
+*/
+
+struct MagentaDevice
+{
+  std::string deviceName;
+  std::string deviceId;
+  int deviceType;
+  bool isonline;
+  std::string physicalDeviceId;
+  std::string lastOfflineTime;
+  std::string terminalType;
+  bool isSupportPVR;
+  std::string channelNamespace;
+  std::string channelNamespaceName;
+  int status;
+};
 
 struct MagentaGenre
 {
@@ -174,17 +273,21 @@ private:
   std::vector<MagentaRecording> m_recordings;
   std::vector<MagentaRecording> m_timers;
   std::vector<MagentaGenre> m_genres;
+  std::vector<MagentaDevice> m_devices;
 
   HttpClient *m_httpClient;
   CSettings* m_settings;
 
   bool JsonRequest(const std::string& url, const std::string& postData, rapidjson::Document& doc);
+  std::string PrepareTime(const std::string& current);
   bool is_better_resolution(const int alternative, const int current);
   bool is_pvr_allowed(const rapidjson::Value& current_item);
   int SelectMediaId(const MagentaChannel channel, const bool npvr);
   std::string GetPlayUrl(const MagentaChannel channel, const int mediaId);
   bool HasStreamingUrl(const MagentaChannel channel);
-  bool MagentaGuestLogin();
+  void GenerateCNonce();
+  bool GuestLogin();
+  bool GuestAuthenticate();
   bool MagentaDTAuthenticate();
   bool MagentaAuthenticate();
   bool AddGroupChannel(const long groupid, const int channelid);
@@ -193,10 +296,17 @@ private:
   bool GetTimersRecordings(const bool isRecording);
   bool GetTimers();
   bool GetGenreIds();
+  bool GetDeviceList();
+  bool PlaceDevice();
+  bool ReplaceOldestDevice();
+  bool ReplaceDevice(const std::string& orgDeviceId);
+  bool ModifyDeviceName(const std::string& deviceId);
+  bool IsDeviceInList();
   bool LoadChannels();
 
   std::string m_licence_url;
   std::string m_ca_device_id;
+  std::string m_device_id;
   std::string m_epg_https_url;
   std::string m_sam_service_url;
   std::string m_cnonce;
@@ -204,6 +314,7 @@ private:
   std::string m_userContentFilter;
   std::string m_encryptToken;
   std::string m_userID;
+  std::string m_userGroup;
   std::string m_sessionID;
   std::string m_session_key;
   int m_currentChannelId;
