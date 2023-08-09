@@ -22,24 +22,6 @@ static const int MOBILE = 3;
 static const int OTT_STB = 5;
 static const int HYBRID_STB = 17;
 static const std::string GUEST_URL      = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
-static const std::string CLIENT_ID      = "10LIVESAM30000004901NGTVANDROIDTV0000000";
-static const std::string CLIENT_ID_WEB  = "10LIVESAM30000004901NGTVMAGENTA000000000";
-static const std::string CLIENT_ID_STICK = "10LIVESAM30000004901NGTVSTICK00000000000";
-//static const std::string USER_GROUP     = "IPTV_OTT_DT";
-static const std::string TERMINALVENDOR = "SHIELD Android TV";
-static const std::string TERMINALVENDOR_WEB = "Unknown";
-//static const std::string TERMINALVENDOR = "MagentaTV ONE";
-static const std::string TERMINALTYPE   = "TV_AndroidTV";
-static const std::string TERMINALTYPE_WEB = "WEBTV";
-//static const std::string HARDWARESUPPLIER = "AndroidTV Magenta ONE Android TV";
-static const std::string HARDWARESUPPLIER = "AndroidTV SHIELD Android TV";
-static const std::string HARDWARESUPPLIER_WEB = "WEB-MTV";
-static const std::string OS_VERSION = "7825230_3167.5736";
-static const std::string OS_VERSION_WEB = "Windows 10";
-static const std::string SOFTWARE_VERSION_WEB = "1.63.2";
-static const std::string SOFTWARE_VERSION = "11";
-static const std::string psk_id1        = "TkdUVjAwMDAwMQ==";
-static const std::string psk_id2        = "QjRENUI3Q0M0RDhEOTFCRTVDRkQ1NjhFQ0VCQ0ZDMDk1RUVDN0U5RTFBRDYwNzYyODJBMDUzNjVGNkUxNkMyQw==";
 static const std::string SUBNETID = "4901";
 static const std::string TEMPLATENAME = "NGTV";
 static const std::string TIMEZONE = "Europe/Berlin";
@@ -108,6 +90,53 @@ urls: {
     userSettings: "/EPG/JSON/QuerySubscriberEx"
 },
 */
+struct MagentaParameter
+{
+  std::string clientId;
+  std::string pskName;
+  std::string pskValue;
+  std::string terminaltype;
+  std::string terminalvendor;
+  std::string hwSupplier;
+  std::string deviceClass;
+  std::string softwareVersion;
+  std::string osVersion;
+};
+
+MagentaParameter MagentaParameters[3] = {{
+                                          "10LIVESAM30000004901NGTVANDROIDTV0000000",
+                                          "NGTV000001",
+                                          "B4D5B7CC4D8D91BE5CFD568ECEBCFC095EEC7E9E1AD6076282A05365F6E16C2C",
+                                          "TV_AndroidTV",
+                                          "SHIELD Android TV",
+                                          "AndroidTV SHIELD Android TV",
+                                          "TV",
+                                          "11",
+                                          "7825230_3167.5736"
+                                         },
+                                         {
+                                          "10LIVESAM30000004901NGTVSTICK00000000000",
+                                          "MS03P00002",
+                                          "2959F9E62ED1000FD4539AB5F38E9F6BCCBCB58480F459DC976A8DA07694C569",
+                                          "ATV_STICK",
+                                          "NVIDIA",
+                                          "SHIELD Android TV",
+                                          "Android",
+                                          "1.67.1",
+                                          "11"
+                                        },
+                                         {
+                                          "10LIVESAM30000004901NGTVMAGENTA000000000",
+                                          "NGTV000001",
+                                          "B4D5B7CC4D8D91BE5CFD568ECEBCFC095EEC7E9E1AD6076282A05365F6E16C2C",
+                                          "WEBTV",
+                                          "Unknown",
+                                          "WEB-MTV",
+                                          "TV",
+                                          "1.63.2",
+                                          "Windows 10"
+                                         }
+                                        };
 
 struct MagentaDevice
 {
@@ -284,6 +313,7 @@ private:
   bool is_pvr_allowed(const rapidjson::Value& current_item);
   int SelectMediaId(const MagentaChannel channel, const bool npvr);
   std::string GetPlayUrl(const MagentaChannel channel, const int mediaId);
+  std::string GetPlay(const int& chanId, const int& mediaId, const bool isTimeshift);
   bool HasStreamingUrl(const MagentaChannel channel);
   void GenerateCNonce();
   bool GuestLogin();
@@ -319,4 +349,5 @@ private:
   std::string m_session_key;
   int m_currentChannelId;
   int m_currentMediaId;
+  int m_params;
 };

@@ -93,6 +93,13 @@ bool CSettings::Load()
     return false;
   }
 
+  if (!kodi::addon::CheckSettingInt("terminaltype", m_terminaltype))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'terminaltype' setting");
+    return false;
+  }
+
   return true;
 }
 

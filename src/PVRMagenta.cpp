@@ -253,12 +253,12 @@ bool CPVRMagenta::GuestAuthenticate()
   std::string postData = "{\"cnonce\": \"" + m_cnonce + "\","
 	                        "\"areaid\": \"1\","
 	                        "\"mac\": \"" + m_device_id + "\","
-	                        "\"preSharedKeyID\": \"" + base64_decode(psk_id1) + "\","
+	                        "\"preSharedKeyID\": \"" + MagentaParameters[m_params].pskName + "\","
 	                        "\"subnetId\": \"" + SUBNETID + "\","
 	                        "\"templatename\": \"" + TEMPLATENAME + "\","
 	                        "\"terminalid\": \"" + m_device_id + "\","
-	                        "\"terminaltype\": \"" + TERMINALTYPE + "\","
-	                        "\"terminalvendor\": \"" + TERMINALVENDOR + "\","
+	                        "\"terminaltype\": \"" + MagentaParameters[m_params].terminaltype + "\","
+	                        "\"terminalvendor\": \"" + MagentaParameters[m_params].terminalvendor + "\","
 	                        "\"timezone\": \"" + TIMEZONE + "\","
 	                        "\"usergroup\": \"-1\","
 	                        "\"userType\": 3,"
@@ -290,7 +290,7 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 	                        ", \"userType\": \"1\"" +
                           ", \"terminalid\": \"" + m_device_id +
 	                        "\", \"mac\": \"" + m_device_id +
-	                        "\", \"terminaltype\": \"" + TERMINALTYPE +
+	                        "\", \"terminaltype\": \"" + MagentaParameters[m_params].terminaltype +
                           "\", \"utcEnable\": 1" +
                           ", \"timezone\": \"" + TIMEZONE +
                           "\", \"caDeviceInfo\": [{" +
@@ -300,17 +300,17 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 		                          "\"key\": \"GUID\"," +
 		                          "\"value\": \"" + m_device_id + "\"}, {" +
                               "\"key\": \"HardwareSupplier\"," +
-                              "\"value\": \"" + HARDWARESUPPLIER + "\"}, {" +
+                              "\"value\": \"" + MagentaParameters[m_params].hwSupplier + "\"}, {" +
                               "\"key\": \"DeviceClass\"," +
-                              "\"value\": \"TV\"}, {" +
+                              "\"value\": \"" + MagentaParameters[m_params].deviceClass + "\"}, {" +
                               "\"key\": \"DeviceStorage\"," +
                               "\"value\": \"12495872000\"}, {" +
 		                          "\"key\": \"DeviceStorageSize\"," +
 		                          "\"value\": \"12495872000\"}]," +
-	                        "\"softwareVersion\": \"" + SOFTWARE_VERSION + "\"," +
-	                        "\"osversion\": \"" + OS_VERSION + "\"," +
-	                        "\"terminalvendor\": \"" + TERMINALVENDOR + "\"," +
-	                        "\"preSharedKeyID\": \"" + base64_decode(psk_id1) + "\"," +
+	                        "\"softwareVersion\": \"" + MagentaParameters[m_params].softwareVersion + "\"," +
+	                        "\"osversion\": \"" + MagentaParameters[m_params].osVersion + "\"," +
+	                        "\"terminalvendor\": \"" + MagentaParameters[m_params].terminalvendor + "\"," +
+	                        "\"preSharedKeyID\": \"" + MagentaParameters[m_params].pskName + "\"," +
 	                        "\"cnonce\": \"" + m_cnonce + "\"," +
 	                        "\"areaid\": \"1\"," +
 	                        "\"templatename\": \"" + TEMPLATENAME + "\"," +
@@ -348,7 +348,7 @@ bool CPVRMagenta::MagentaDTAuthenticate()
   m_userContentFilter = Utils::JsonStringOrEmpty(doc, "userContentFilter");
   m_userContentListFilter = Utils::JsonStringOrEmpty(doc, "userContentListFilter");
 
-  std::string key = base64_decode(psk_id2) + m_userID + m_encryptToken + m_cnonce;
+  std::string key = MagentaParameters[m_params].pskValue + m_userID + m_encryptToken + m_cnonce;
   kodi::Log(ADDON_LOG_DEBUG, "Key: %s", key.c_str());
 
   SHA256 sha256;
@@ -364,7 +364,7 @@ bool CPVRMagenta::MagentaAuthenticate()
   if (!MagentaDTAuthenticate()) {
     int statusCode = 0;
     std::string url = m_sam_service_url + "/oauth2/tokens";
-    std::string postData = "client_id=" + CLIENT_ID + "&scope=ngtvepg offline_access&grant_type=refresh_token&refresh_token=" + m_settings->GetMagentaRefreshToken();
+    std::string postData = "client_id=" + MagentaParameters[m_params].clientId + "&scope=ngtvepg offline_access&grant_type=refresh_token&refresh_token=" + m_settings->GetMagentaRefreshToken();
 
     std::string jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -373,7 +373,7 @@ bool CPVRMagenta::MagentaAuthenticate()
     if ((doc.GetParseError()) || (statusCode != 200))
     {
       url = m_sam_service_url + "/oauth2/bc-auth/start";
-      postData = "client_id=" + CLIENT_ID + "&scope=openid offline_access&claims={\"id_token\":{\"urn:telekom.com:all\":{\"essential\":false}}}";
+      postData = "client_id=" + MagentaParameters[m_params].clientId + "&scope=openid offline_access&claims={\"id_token\":{\"urn:telekom.com:all\":{\"essential\":false}}}";
 
       jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -393,7 +393,7 @@ bool CPVRMagenta::MagentaAuthenticate()
       kodi::gui::dialogs::OK::ShowAndGetInput(kodi::addon::GetLocalizedString(30046), text);
 
       url = m_sam_service_url + "/oauth2/tokens";
-      postData = "client_id=" + CLIENT_ID + "&scope=openid offline_access&grant_type=urn:telekom:com:grant-type:remote-login&auth_req_id=" +
+      postData = "client_id=" + MagentaParameters[m_params].clientId + "&scope=openid offline_access&grant_type=urn:telekom:com:grant-type:remote-login&auth_req_id=" +
                 auth_req_id + "&auth_req_sec=" + auth_req_sec + "&claims={\"id_token\":{\"urn:telekom.com:all\":{\"essential\":false}}}";
 
       jsonString = m_httpClient->HttpPost(url, postData, statusCode);
@@ -405,7 +405,7 @@ bool CPVRMagenta::MagentaAuthenticate()
         return false;
       }
       m_settings->SetSetting("openid_token", Utils::JsonStringOrEmpty(doc, "access_token"));
-      postData = "client_id=" + CLIENT_ID + "&scope=ngtvepg offline_access&grant_type=refresh_token&refresh_token=" + Utils::JsonStringOrEmpty(doc, "refresh_token");
+      postData = "client_id=" + MagentaParameters[m_params].clientId + "&scope=ngtvepg offline_access&grant_type=refresh_token&refresh_token=" + Utils::JsonStringOrEmpty(doc, "refresh_token");
 
       jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -770,6 +770,8 @@ CPVRMagenta::CPVRMagenta() :
 {
   m_settings->Load();
   m_httpClient = new HttpClient(m_settings);
+
+  m_params = m_settings->GetTerminalType();
 
   srand(time(nullptr));
   GenerateCNonce();
@@ -1251,6 +1253,80 @@ bool CPVRMagenta::ReleaseCurrentMedia()
   return true;
 }
 
+std::string CPVRMagenta::GetPlay(const int& chanId, const int& mediaId, const bool isTimeshift)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  if (!ReleaseCurrentMedia()) {
+    return "";
+  }
+
+  std::string checksum = hmac<SHA256>(std::to_string(chanId), m_session_key);
+  kodi::Log(ADDON_LOG_DEBUG, "Checksum: %s", checksum.c_str());
+
+  int statusCode = 0;
+  std::string url = m_epg_https_url + "Play";
+  std::string postData = "{\"contentid\": \"" + std::to_string(chanId) + "\","
+                          "\"mediaid\": \"" + std::to_string(mediaId) + "\","
+                          "\"playtype\": 2,"
+                          "\"checksum\": \"" + checksum + "\"}";
+//      kodi::Log(ADDON_LOG_DEBUG, "postData %s", postData.c_str());
+
+  std::string jsonString = m_httpClient->HttpPost(url, postData, statusCode);
+
+//      kodi::Log(ADDON_LOG_DEBUG, "Answer Play %s", jsonString.c_str());
+
+  rapidjson::Document doc;
+  doc.Parse(jsonString.c_str());
+  if ((doc.GetParseError()) || (!doc.HasMember("retcode"))) {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to Play");
+    return "";
+  }
+  if (Utils::JsonStringOrEmpty(doc, "retcode") != "0") {
+    if (Utils::JsonStringOrEmpty(doc, "retcode") == "-2") {
+      MagentaAuthenticate();
+      checksum = hmac<SHA256>(std::to_string(chanId), m_session_key);
+      std::string postData = "{\"contentid\": \"" + std::to_string(chanId) + "\","
+                              "\"mediaid\": \"" + std::to_string(mediaId) + "\","
+                              "\"playtype\": 2,"
+                              "\"checksum\": \"" + checksum + "\"}";
+
+      jsonString = m_httpClient->HttpPost(url, postData, statusCode);
+      doc.Parse(jsonString.c_str());
+      if ((doc.GetParseError()) || (!doc.HasMember("retcode"))) {
+        kodi::Log(ADDON_LOG_ERROR, "Failed to Play");
+        return "";
+      }
+      if (Utils::JsonStringOrEmpty(doc, "retcode") != "0") {
+        kodi::Log(ADDON_LOG_ERROR, "Play returned not 0! %s", jsonString.c_str());
+        return "";
+      }
+    } else {
+      kodi::Log(ADDON_LOG_ERROR, "Play returned not 0! %s", jsonString.c_str());
+      return "";
+    }
+  }
+  std::string playUrl = Utils::JsonStringOrEmpty(doc, "url");
+//      std::string playUrl = GetPlayUrl(channel, mediaId);
+  if (playUrl.empty()) {
+    kodi::Log(ADDON_LOG_ERROR, "Play url was empty");
+    return "";
+  }
+  kodi::Log(ADDON_LOG_DEBUG, "[PLAY url: %s", playUrl.c_str());
+  std::vector<std::string> out;
+  tokenize(playUrl, "|", out);
+  std::string spliturl = out[isTimeshift ? 1 : 0];
+/*
+  for (auto &s: out) {
+    kodi::Log(ADDON_LOG_DEBUG, "[PLAY Timeshifted] url: %s", s.c_str());
+  }
+*/
+  std::string appendix = "&uid=" + m_userID + "&sid=" + m_sessionID + "&i=" + (isTimeshift ? "0" : "4") + "&dp=0";
+  spliturl += appendix;
+
+  return spliturl;
+}
+
 PVR_ERROR CPVRMagenta::GetEPGTagStreamProperties(
     const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
@@ -1264,75 +1340,12 @@ PVR_ERROR CPVRMagenta::GetEPGTagStreamProperties(
       int chanId = channel.iUniqueId;
       int mediaId = SelectMediaId(channel, false);
 
-      if (!ReleaseCurrentMedia()) {
+      std::string playurl = GetPlay(chanId, mediaId, true);
+      if (playurl.empty())
         return PVR_ERROR_FAILED;
-      }
 
-      std::string checksum = hmac<SHA256>(std::to_string(chanId), m_session_key);
-      kodi::Log(ADDON_LOG_DEBUG, "Checksum: %s", checksum.c_str());
-
-      int statusCode = 0;
-      std::string url = m_epg_https_url + "Play";
-      std::string postData = "{\"contentid\": \"" + std::to_string(chanId) + "\","
-                              "\"mediaid\": \"" + std::to_string(mediaId) + "\","
-                              "\"playtype\": 2,"
-                              "\"checksum\": \"" + checksum + "\"}";
-//      kodi::Log(ADDON_LOG_DEBUG, "postData %s", postData.c_str());
-
-      std::string jsonString = m_httpClient->HttpPost(url, postData, statusCode);
-
-//      kodi::Log(ADDON_LOG_DEBUG, "Answer Play %s", jsonString.c_str());
-
-      rapidjson::Document doc;
-      doc.Parse(jsonString.c_str());
-      if ((doc.GetParseError()) || (!doc.HasMember("retcode"))) {
-        kodi::Log(ADDON_LOG_ERROR, "Failed to Play");
-        return PVR_ERROR_FAILED;
-      }
-      if (Utils::JsonStringOrEmpty(doc, "retcode") != "0") {
-        if (Utils::JsonStringOrEmpty(doc, "retcode") == "-2") {
-          MagentaAuthenticate();
-          checksum = hmac<SHA256>(std::to_string(chanId), m_session_key);
-          std::string postData = "{\"contentid\": \"" + std::to_string(chanId) + "\","
-                                  "\"mediaid\": \"" + std::to_string(mediaId) + "\","
-                                  "\"playtype\": 2,"
-                                  "\"checksum\": \"" + checksum + "\"}";
-
-          jsonString = m_httpClient->HttpPost(url, postData, statusCode);
-          doc.Parse(jsonString.c_str());
-          if ((doc.GetParseError()) || (!doc.HasMember("retcode"))) {
-            kodi::Log(ADDON_LOG_ERROR, "Failed to Play");
-            return PVR_ERROR_FAILED;
-          }
-          if (Utils::JsonStringOrEmpty(doc, "retcode") != "0") {
-            kodi::Log(ADDON_LOG_ERROR, "Play returned not 0! %s", jsonString.c_str());
-            return PVR_ERROR_FAILED;
-          }
-        } else {
-          kodi::Log(ADDON_LOG_ERROR, "Play returned not 0! %s", jsonString.c_str());
-          return PVR_ERROR_FAILED;
-        }
-      }
-      std::string playUrl = Utils::JsonStringOrEmpty(doc, "url");
-//      std::string playUrl = GetPlayUrl(channel, mediaId);
-      if (playUrl.empty()) {
-        kodi::Log(ADDON_LOG_ERROR, "Play url was empty");
-        return PVR_ERROR_FAILED;
-      }
-      kodi::Log(ADDON_LOG_DEBUG, "[PLAY Timeshifted] url: %s", playUrl.c_str());
-      std::vector<std::string> out;
-      tokenize(playUrl, "|", out);
-      std::string spliturl = out[1];
-/*
-      for (auto &s: out) {
-        kodi::Log(ADDON_LOG_DEBUG, "[PLAY Timeshifted] url: %s", s.c_str());
-      }
-*/
-      std::string appendix = "&uid=" + m_userID + "&sid=" + m_sessionID + "&i=0&dp=0";
-      spliturl += appendix;
-
-      kodi::Log(ADDON_LOG_DEBUG, "[PLAY Timeshifted] url: %s", spliturl.c_str());
-      SetStreamProperties(properties, spliturl, false, true, false);
+      kodi::Log(ADDON_LOG_DEBUG, "[PLAY Timeshifted] url: %s", playurl.c_str());
+      SetStreamProperties(properties, playurl, false, true, false);
     }
   }
 

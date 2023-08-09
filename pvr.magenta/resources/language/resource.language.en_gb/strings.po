@@ -65,7 +65,7 @@ msgid "General"
 msgstr ""
 
 msgctxt "#30015"
-msgid "Credentials"
+msgid "Settings"
 msgstr ""
 
 msgctxt "#30020"
@@ -82,6 +82,18 @@ msgstr ""
 
 msgctxt "#30033"
 msgid "First channel number"
+msgstr ""
+
+msgctxt "#30041"
+msgid "Device Type"
+msgstr ""
+
+msgctxt "#30042"
+msgid "Android TV"
+msgstr ""
+
+msgctxt "#30043"
+msgid "MagentaTV Stick"
 msgstr ""
 
 sgctxt "#30046"

@@ -11,6 +11,7 @@ This is a Magenta PVR client addon for Kodi. It provides Kodi integration for th
 - Delete Recordings
 - Single timers add&delete
 - Playtimeshift
+- Automatic replacement of devices when more than 5 OTT devices reached
 
 ## Build instructions
 

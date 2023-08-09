@@ -52,17 +52,11 @@ msgctxt "#30004"
 msgid "Device ID"
 msgstr "Device ID"
 
-#. Settings category label
-#: pvr.hrti/resources/settings.xml
-msgctxt "#30014"
-msgid "Hrti"
-msgstr "Hrti"
-
 #. Settings group label
 #: pvr.hrti/resources/settings.xml
 msgctxt "#30015"
-msgid "Credentials"
-msgstr "Zugangsdaten"
+msgid "Settings"
+msgstr "Einstellungen"
 
 msgctxt "#30010"
 msgid "PVR client menu hook item (settings) called."
@@ -95,6 +89,18 @@ msgstr "Sender Gruppen anzeigen"
 msgctxt "#30033"
 msgid "First channel number"
 msgstr "Erste Sendernummer"
+
+msgctxt "#30041"
+msgid "Device Type"
+msgstr "Endgerätetyp"
+
+msgctxt "#30042"
+msgid "Android TV"
+msgstr "Android TV"
+
+msgctxt "#30043"
+msgid "MagentaTV Stick"
+msgstr "MagentaTV Stick"
 
 msgctxt "#30046"
 msgid "Please enter OTP to register device"

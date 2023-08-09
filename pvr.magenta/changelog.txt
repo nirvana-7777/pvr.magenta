@@ -10,3 +10,5 @@ v20.7.0
 - Restart of current event (begin of Timeshift Buffer only)
 v20.7.1
 - Add device replace mechanism when 5 OTT devices are registered
+v20.7.2
+- Make Terminal Type configurable
