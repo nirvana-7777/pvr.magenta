@@ -18,8 +18,8 @@
 #include "rapidjson/stringbuffer.h"
 #include "sha256.h"
 #include "hmac.h"
-#include "Base64.h"
-#include <kodi/Filesystem.h>
+//#include "Base64.h"
+//#include <kodi/Filesystem.h>
 
 /***********************************************************
   * PVR Client AddOn specific public library functions

@@ -14,8 +14,6 @@ set(PVRMAGENTA_SOURCES
   src/http/Curl.cpp
   src/http/HttpClient.cpp
   src/Utils.cpp
-  src/md5.cpp
-  src/Base64.cpp
   src/sha256.cpp
   src/Settings.cpp
   src/PVRMagenta.cpp
@@ -25,8 +23,6 @@ set(PVRMAGENTA_HEADERS
   src/http/Curl.h
   src/http/HttpClient.h
   src/Utils.h
-  src/md5.h
-  src/Base64.h
   src/sha256.h
   src/hmac.h
   src/Settings.h
