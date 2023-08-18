@@ -12,3 +12,8 @@ v20.7.1
 - Add device replace mechanism when 5 OTT devices are registered
 v20.7.2
 - Make Terminal Type configurable
+v20.7.3
+- Read out user defined channellist
+- Make Channel Logos selectable
+- Play series recordings from directories
+- Option to deactivate hidden channels

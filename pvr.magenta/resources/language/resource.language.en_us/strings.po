@@ -80,6 +80,22 @@ msgctxt "#30022"
 msgid "Use categories"
 msgstr ""
 
+msgctxt "#30023"
+msgid "Use custom channel numbers"
+msgstr ""
+
+msgctxt "#30024"
+msgid "Use white channel logos"
+msgstr ""
+
+msgctxt "#30025"
+msgid "Show only cloud recordings"
+msgstr ""
+
+msgctxt "#30026"
+msgid "Deactivate hidden channels"
+msgstr ""
+
 msgctxt "#30033"
 msgid "First channel number"
 msgstr ""

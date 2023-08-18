@@ -86,6 +86,22 @@ msgctxt "#30022"
 msgid "Use categories"
 msgstr "Sender Gruppen anzeigen"
 
+msgctxt "#30023"
+msgid "Use custom channel numbers"
+msgstr "Eigene Senderreihenfolge nutzen"
+
+msgctxt "#30024"
+msgid "Use white channel logos"
+msgstr "Weiße Senderlogos verwenden"
+
+msgctxt "#30025"
+msgid "Show only cloud recordings"
+msgstr "Nur Cloud Aufnahmen anzeigen"
+
+msgctxt "#30026"
+msgid "Deactivate hidden channels"
+msgstr "Versteckte Sender deaktivieren"
+
 msgctxt "#30033"
 msgid "First channel number"
 msgstr "Erste Sendernummer"

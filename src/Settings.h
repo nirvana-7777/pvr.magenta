@@ -18,8 +18,6 @@ public:
   ADDON_STATUS SetSetting(const std::string& settingName, const std::string& settingValue);
   bool VerifySettings();
 
-//  const std::string& GetMagentaUsername() const { return m_magentaUsername; }
-//  const std::string& GetMagentaPassword() const { return m_magentaPassword; }
   const int& GetTerminalType() const { return m_terminaltype; }
   const std::string& GetMagentaEPGToken() const { return m_epgToken; }
   const std::string& GetMagentaOpenIDToken() const { return m_openidToken; }
@@ -29,12 +27,14 @@ public:
   const std::string& GetMagentaDeviceID() const { return m_magentaDeviceID; }
   const int& GetStartNum() const { return m_start_num; }
   const bool HideUnsubscribed() const { return m_hideunsubscribed; }
+  const bool UseCustomChannels() const { return m_usecustomchannels; }
+  const bool UseWhiteLogos() const { return m_whitelogos; }
+  const bool IsOnlyCloud() const { return m_onlycloud; }
+  const bool IsHiddenDeactivated() const { return m_deactivatehidden; }
   const bool PreferHigherResolution() const { return m_higherresolution; }
   const bool IsGroupsenabled() const  { return m_enablegroups; }
 
 private:
-//  std::string m_magentaUsername;
-//  std::string m_magentaPassword;
   std::string m_epgToken;
   std::string m_openidToken;
   std::string m_tvToken;
@@ -44,6 +44,10 @@ private:
   int m_start_num;
   int m_terminaltype;
   bool m_hideunsubscribed;
+  bool m_usecustomchannels;
+  bool m_whitelogos;
+  bool m_onlycloud;
+  bool m_deactivatehidden;
   bool m_higherresolution;
   bool m_enablegroups;
 };

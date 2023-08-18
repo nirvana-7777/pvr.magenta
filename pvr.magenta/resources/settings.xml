@@ -28,6 +28,26 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="customchannels" type="boolean" label="30023">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="whitelogos" type="boolean" label="30024">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="onlycloud" type="boolean" label="30025">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="deactivatehidden" type="boolean" label="30026">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
         <setting id="higherresolution" type="boolean" label="30021">
           <level>0</level>
           <default>true</default>

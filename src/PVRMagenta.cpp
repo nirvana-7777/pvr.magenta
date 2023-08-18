@@ -251,7 +251,7 @@ bool CPVRMagenta::GuestAuthenticate()
 
   std::string url = m_epg_https_url + "Authenticate";
   std::string postData = "{\"cnonce\": \"" + m_cnonce + "\","
-	                        "\"areaid\": \"1\","
+	                        "\"areaid\": \"" + AREAID + "\","
 	                        "\"mac\": \"" + m_device_id + "\","
 	                        "\"preSharedKeyID\": \"" + MagentaParameters[m_params].pskName + "\","
 	                        "\"subnetId\": \"" + SUBNETID + "\","
@@ -312,7 +312,7 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 	                        "\"terminalvendor\": \"" + MagentaParameters[m_params].terminalvendor + "\"," +
 	                        "\"preSharedKeyID\": \"" + MagentaParameters[m_params].pskName + "\"," +
 	                        "\"cnonce\": \"" + m_cnonce + "\"," +
-	                        "\"areaid\": \"1\"," +
+	                        "\"areaid\": \"" + AREAID + "\"," +
 	                        "\"templatename\": \"" + TEMPLATENAME + "\"," +
 	                        "\"subnetId\": \"" + SUBNETID + "\"}";
 //  kodi::Log(ADDON_LOG_DEBUG, "PostData %s", postData.c_str());
@@ -470,6 +470,61 @@ bool CPVRMagenta::GetCategories()
   return true;
 }
 
+void CPVRMagenta::FillRecording(const rapidjson::Value& recordingItem, MagentaRecording& magenta_recording, const int& index)
+{
+  magenta_recording.index = index;
+  magenta_recording.pvrId = Utils::JsonStringOrEmpty(recordingItem, "pvrId");
+  std::string channelId = Utils::JsonStringOrEmpty(recordingItem, "channelId");
+  if (channelId != "") {
+    magenta_recording.channelId = std::stoi(channelId);
+  }
+  std::string mediaId = Utils::JsonStringOrEmpty(recordingItem, "mediaId");
+  if (mediaId != "") {
+    magenta_recording.mediaId = std::stoi(mediaId);
+  }
+  magenta_recording.introduce = Utils::JsonStringOrEmpty(recordingItem, "introduce");
+  magenta_recording.beginTime = Utils::JsonStringOrEmpty(recordingItem, "beginTime");
+  magenta_recording.endTime = Utils::JsonStringOrEmpty(recordingItem, "endTime");
+  std::string beginoffset = Utils::JsonStringOrEmpty(recordingItem, "beginOffset");
+  if (!beginoffset.empty()) {
+    magenta_recording.beginOffset = stoi(beginoffset);
+  }
+  std::string endoffset = Utils::JsonStringOrEmpty(recordingItem, "endOffset");
+  if (!endoffset.empty()) {
+    magenta_recording.endOffset = stoi(endoffset);
+  }
+  magenta_recording.pvrName = Utils::JsonStringOrEmpty(recordingItem, "pvrName");
+  magenta_recording.channelName = Utils::JsonStringOrEmpty(recordingItem, "channelName");
+  magenta_recording.picture = GetPictureFromItem(recordingItem);
+  std::string realRecordLength = Utils::JsonStringOrEmpty(recordingItem, "realRecordLength");
+  if (realRecordLength != "") {
+    magenta_recording.realRecordLength = std::stoi(realRecordLength);
+  } else {
+    magenta_recording.realRecordLength = 0;
+  }
+  std::string bookmarkTime = Utils::JsonStringOrEmpty(recordingItem, "bookmarkTime");
+  if (bookmarkTime != "") {
+    magenta_recording.bookmarkTime = std::stoi(bookmarkTime);
+  } else {
+    magenta_recording.bookmarkTime = 0;
+  }
+  std::string deleteMode = Utils::JsonStringOrEmpty(recordingItem, "deleteMode");
+  if (deleteMode != "") {
+    magenta_recording.deleteMode = std::stoi(deleteMode);
+  } else {
+    magenta_recording.deleteMode = 0;
+  }
+  if (recordingItem.HasMember("genreIds")) {
+    const rapidjson::Value& genres = recordingItem["genreIds"];
+
+    for (rapidjson::SizeType i = 0; i < genres.Size(); i++)
+    {
+      std::string genre = genres[i].GetString();
+      magenta_recording.genres.emplace_back(stoi(genre));
+    }
+  }
+}
+
 bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
@@ -484,10 +539,12 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
 	                       "\"expandSubTask\": 2,"
 	                       "\"isFilter\": 0,"
 	                       "\"offset\": 0,"
-	                       "\"orderType\": 1,"
-	                       "\"pvrType\": 2,"
-	                       "\"type\": 0,"
-	                       "\"DTQueryType\": ";
+	                       "\"orderType\": 1,";
+  if (m_settings->IsOnlyCloud()) {
+    postData += "\"pvrType\": 2,";
+  }
+  postData += "\"type\": 0,"
+	            "\"DTQueryType\": ";
   postData += (isRecording ? "0" : "1");
   postData += "}";
 
@@ -506,70 +563,57 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
     {
       const rapidjson::Value& recordingItem = (*itr1);
 
-      std::string pvrid = Utils::JsonStringOrEmpty(recordingItem, "pvrId");
+      if (recordingItem.HasMember("pvrId")) {
+        MagentaRecording magenta_recording;
+        FillRecording(recordingItem, magenta_recording, index++);
 
-      if (pvrid.empty())
-        continue;
-
-      MagentaRecording magenta_recording;
-
-      magenta_recording.index = index++;
-      magenta_recording.pvrId = pvrid;
-      std::string channelId = Utils::JsonStringOrEmpty(recordingItem, "channelId");
-      if (channelId != "") {
-        magenta_recording.channelId = std::stoi(channelId);
-      }
-      std::string mediaId = Utils::JsonStringOrEmpty(recordingItem, "mediaId");
-      if (mediaId != "") {
-        magenta_recording.mediaId = std::stoi(mediaId);
-      }
-      magenta_recording.introduce = Utils::JsonStringOrEmpty(recordingItem, "introduce");
-      magenta_recording.beginTime = Utils::JsonStringOrEmpty(recordingItem, "beginTime");
-      magenta_recording.endTime = Utils::JsonStringOrEmpty(recordingItem, "endTime");
-      std::string beginoffset = Utils::JsonStringOrEmpty(recordingItem, "beginOffset");
-      if (!beginoffset.empty()) {
-        magenta_recording.beginOffset = stoi(beginoffset);
-      }
-      std::string endoffset = Utils::JsonStringOrEmpty(recordingItem, "endOffset");
-      if (!endoffset.empty()) {
-        magenta_recording.endOffset = stoi(endoffset);
-      }
-      magenta_recording.pvrName = Utils::JsonStringOrEmpty(recordingItem, "pvrName");
-      magenta_recording.channelName = Utils::JsonStringOrEmpty(recordingItem, "channelName");
-      magenta_recording.picture = GetPictureFromItem(recordingItem);
-      std::string realRecordLength = Utils::JsonStringOrEmpty(recordingItem, "realRecordLength");
-      if (realRecordLength != "") {
-        magenta_recording.realRecordLength = std::stoi(realRecordLength);
-      } else {
-        magenta_recording.realRecordLength = 0;
-      }
-      std::string bookmarkTime = Utils::JsonStringOrEmpty(recordingItem, "bookmarkTime");
-      if (bookmarkTime != "") {
-        magenta_recording.bookmarkTime = std::stoi(bookmarkTime);
-      } else {
-        magenta_recording.bookmarkTime = 0;
-      }
-      std::string deleteMode = Utils::JsonStringOrEmpty(recordingItem, "deleteMode");
-      if (deleteMode != "") {
-        magenta_recording.deleteMode = std::stoi(deleteMode);
-      } else {
-        magenta_recording.deleteMode = 0;
-      }
-      if (recordingItem.HasMember("genreIds")) {
-        const rapidjson::Value& genres = recordingItem["genreIds"];
-
-        for (rapidjson::SizeType i = 0; i < genres.Size(); i++)
-        {
-          std::string genre = genres[i].GetString();
-          magenta_recording.genres.emplace_back(stoi(genre));
+        if (isRecording) {
+          m_recordings.emplace_back(magenta_recording);
+          kodi::Log(ADDON_LOG_DEBUG, "Found recording: [%s]", magenta_recording.pvrName.c_str());
+        } else {
+          m_timers.emplace_back(magenta_recording);
+          kodi::Log(ADDON_LOG_DEBUG, "Found timer: [%s]", magenta_recording.pvrName.c_str());
         }
-      }
-      if (isRecording) {
-        m_recordings.emplace_back(magenta_recording);
-        kodi::Log(ADDON_LOG_DEBUG, "Found recording: [%s]", magenta_recording.pvrName.c_str());
-      } else {
-        m_timers.emplace_back(magenta_recording);
-        kodi::Log(ADDON_LOG_DEBUG, "Found timer: [%s]", magenta_recording.pvrName.c_str());
+      } else if (recordingItem.HasMember("periodPVRTaskName") && (recordingItem.HasMember("periodPVRTaskId")) && (recordingItem.HasMember("pvrList"))) {
+        MagentaRecordingGroup recording_group;
+
+        recording_group.periodPVRTaskId = Utils::JsonStringOrEmpty(recordingItem, "periodPVRTaskId");
+        recording_group.periodPVRTaskName = Utils::JsonStringOrEmpty(recordingItem, "periodPVRTaskName");
+        recording_group.channelName = Utils::JsonStringOrEmpty(recordingItem, "channelName");
+        recording_group.seriesType = stoi(Utils::JsonStringOrEmpty(recordingItem, "seriesType"));
+        recording_group.seriesId = stoi(Utils::JsonStringOrEmpty(recordingItem, "seriesId"));
+        recording_group.mediaId = stoi(Utils::JsonStringOrEmpty(recordingItem, "mediaId"));
+        recording_group.channelId = stoi(Utils::JsonStringOrEmpty(recordingItem, "channelId"));
+        recording_group.type = stoi(Utils::JsonStringOrEmpty(recordingItem, "type"));
+        recording_group.beginOffset = stoi(Utils::JsonStringOrEmpty(recordingItem, "beginOffset"));
+        recording_group.endOffset = stoi(Utils::JsonStringOrEmpty(recordingItem, "endOffset"));
+
+        const rapidjson::Value& groupmembers = recordingItem["pvrList"];
+
+        for (rapidjson::Value::ConstValueIterator itr2 = groupmembers.Begin();
+              itr2 != groupmembers.End(); ++itr2)
+        {
+          const rapidjson::Value& groupItem = (*itr2);
+          MagentaRecording magenta_recording;
+          FillRecording(groupItem, magenta_recording, index++);
+
+          //recording_group.groupRecordings.emplace_back(magenta_recording);
+          magenta_recording.periodPVRTaskName = Utils::JsonStringOrEmpty(recordingItem, "periodPVRTaskName");
+          if (isRecording) {
+            m_recordings.emplace_back(magenta_recording);
+            kodi::Log(ADDON_LOG_DEBUG, "Added recording to group: %s, ID: %s", magenta_recording.pvrName.c_str(), magenta_recording.pvrId.c_str());
+          } else {
+            m_timers.emplace_back(magenta_recording);
+            kodi::Log(ADDON_LOG_DEBUG, "Added timer to group: %s, ID: %s", magenta_recording.pvrName.c_str(), magenta_recording.pvrId.c_str());
+          }
+        }
+        if (isRecording) {
+          m_recGroups.emplace_back(recording_group);
+          kodi::Log(ADDON_LOG_DEBUG, "Added recording group: [%s]", recording_group.periodPVRTaskName.c_str());
+        } else {
+          m_timerGroups.emplace_back(recording_group);
+          kodi::Log(ADDON_LOG_DEBUG, "Added timer group: [%s]", recording_group.periodPVRTaskName.c_str());
+        }
       }
     }
   }
@@ -834,6 +878,7 @@ ADDON_STATUS CPVRMagenta::SetSetting(const std::string& settingName, const std::
 
 bool CPVRMagenta::LoadChannels()
 {
+  int pictureNo = m_settings->UseWhiteLogos() ? 15:14;
   kodi::Log(ADDON_LOG_DEBUG, "Load Magenta Channels");
   std::string url = m_epg_https_url + "AllChannel?userContentListFilter=" + m_userContentListFilter;
   std::string jsonString;
@@ -887,7 +932,11 @@ bool CPVRMagenta::LoadChannels()
     magenta_channel.bRadio = false;
 //    magenta_channel.bArchive = false;
     magenta_channel.iUniqueId = stoi(Utils::JsonStringOrEmpty(channelItem, "contentId"));
-    magenta_channel.iChannelNumber = startnum + stoi(Utils::JsonStringOrEmpty(channelItem, "chanNo"));
+
+    int chanNo = stoi(Utils::JsonStringOrEmpty(channelItem, "chanNo"));
+    magenta_channel.isHidden = (chanNo < 0) ? true : false;
+    magenta_channel.iChannelNumber = (chanNo < 0) ? 0 : startnum + chanNo;
+
     magenta_channel.strChannelName = Utils::JsonStringOrEmpty(channelItem, "name");
 
     const rapidjson::Value& pictures = channelItem["pictures"];
@@ -896,7 +945,7 @@ bool CPVRMagenta::LoadChannels()
     {
       const rapidjson::Value& pictureItem = (*itr2);
 
-      if (Utils::JsonStringOrEmpty(pictureItem, "imageType") == "14") {
+      if (stoi(Utils::JsonStringOrEmpty(pictureItem, "imageType")) == pictureNo) {
         magenta_channel.strIconPath = Utils::JsonStringOrEmpty(pictureItem, "href");
       }
     }
@@ -993,7 +1042,6 @@ bool CPVRMagenta::LoadChannels()
       for (int j = 0; j < m_channels[i].physicalChannels.size(); j++)
       {
         if (m_channels[i].physicalChannels[j].mediaId == stoi(Utils::JsonStringOrEmpty(physItem, "mediaId"))) {
-//          m_channels[i].strStreamURL = Utils::JsonStringOrEmpty(physItem, "playurl");
           m_channels[i].physicalChannels[j].playUrl = Utils::JsonStringOrEmpty(physItem, "playurl");
           const rapidjson::Value& btv = physItem["btvCR"];
           const rapidjson::Value& pltv = physItem["pltvCR"];
@@ -1005,6 +1053,33 @@ bool CPVRMagenta::LoadChannels()
       }
     }
     i++;
+  }
+
+  if (!m_settings->UseCustomChannels()) {
+    return true;
+  }
+
+  url = m_epg_https_url + "GetCustomChanNo";
+  postData = "{\"queryType\": 1}";
+
+  rapidjson::Document doc3;
+  if (JsonRequest(url, postData, doc3)) {
+    if (doc3.HasMember("customChanNo")) {
+      const rapidjson::Value& customlist = doc3["customChanNo"];
+
+      for (rapidjson::Value::ConstValueIterator itr4 = customlist.Begin();
+          itr4 != customlist.End(); ++itr4)
+      {
+        const rapidjson::Value& customChanNo = (*itr4);
+        int uniqueId = stoi(Utils::JsonStringOrEmpty(customChanNo, "key"));
+        for (auto& channel : m_channels)
+        {
+          if (channel.iUniqueId == uniqueId) {
+            channel.iChannelNumber = startnum + stoi(Utils::JsonStringOrEmpty(customChanNo, "value"));
+          }
+        }
+      }
+    }
   }
 
   return true;
@@ -1058,13 +1133,13 @@ PVR_ERROR CPVRMagenta::GetCapabilities(kodi::addon::PVRCapabilities& capabilitie
 
 PVR_ERROR CPVRMagenta::GetBackendName(std::string& name)
 {
-  name = "magenta pvr add-on";
+  name = "Magenta PVR";
   return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR CPVRMagenta::GetBackendVersion(std::string& version)
 {
-  version = "0.1";
+  version = STR(IPTV_VERSION);;
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -1076,14 +1151,27 @@ PVR_ERROR CPVRMagenta::GetConnectionString(std::string& connection)
 
 PVR_ERROR CPVRMagenta::GetBackendHostname(std::string& hostname)
 {
-  hostname = "";
+  hostname = STR(m_epg_https_url);
   return PVR_ERROR_NO_ERROR;
+}
+
+uint64_t CPVRMagenta::GetPVRSpace(const int type)
+{
+  std::string url = m_epg_https_url + "QueryPVRSpace";
+  std::string postData = "{\"type\": " + std::to_string(type) + "}";
+
+  rapidjson::Document doc;
+  if ((!JsonRequest(url, postData, doc)) || (!doc.HasMember("space"))) {
+    return 0;
+  }
+  return stol(Utils::JsonStringOrEmpty(doc, "space"));
 }
 
 PVR_ERROR CPVRMagenta::GetDriveSpace(uint64_t& total, uint64_t& used)
 {
-  total = 1024 * 1024 * 1024;
-  used = 0;
+  total = GetPVRSpace(0) * KBM;
+  used = GetPVRSpace(1) * KBM;
+  kodi::Log(ADDON_LOG_DEBUG, "Reported %llu/%llu used/total", used, total);
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -1377,7 +1465,7 @@ PVR_ERROR CPVRMagenta::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSe
   for (const auto& channel : m_channels)
   {
 
-    if ((channel.bRadio == bRadio) && ((!m_settings->HideUnsubscribed()) || (HasStreamingUrl(channel))))
+    if ((channel.bRadio == bRadio) && ((!m_settings->HideUnsubscribed()) || (HasStreamingUrl(channel))) && (!m_settings->IsHiddenDeactivated() || !channel.isHidden))
     {
       kodi::addon::PVRChannel kodiChannel;
 
@@ -1386,7 +1474,7 @@ PVR_ERROR CPVRMagenta::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSe
       kodiChannel.SetChannelNumber(channel.iChannelNumber);
       kodiChannel.SetChannelName(channel.strChannelName);
       kodiChannel.SetIconPath(channel.strIconPath);
-      kodiChannel.SetIsHidden(false);
+      kodiChannel.SetIsHidden(channel.isHidden);
       kodiChannel.SetHasArchive(false);
 
       results.Add(kodiChannel);
@@ -1468,22 +1556,54 @@ PVR_ERROR CPVRMagenta::GetChannelGroupMembers(const kodi::addon::PVRChannelGroup
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR CPVRMagenta::GetSignalStatus(int channelUid, kodi::addon::PVRSignalStatus& signalStatus)
+int CPVRMagenta::GetGroupTimersAmount()
 {
-  signalStatus.SetAdapterName("pvr magenta backend");
-  signalStatus.SetAdapterStatus("OK");
+  int amount = 0;
+  for (const auto& current_timerGroup : m_timerGroups)
+  {
+    amount += current_timerGroup.groupRecordings.size();
+  }
+  return amount;
+}
 
-  return PVR_ERROR_NO_ERROR;
+int CPVRMagenta::GetGroupRecordingsAmount()
+{
+  int amount = 0;
+  for (const auto& current_recGroup : m_recGroups)
+  {
+    amount += current_recGroup.groupRecordings.size();
+  }
+  return amount;
 }
 
 PVR_ERROR CPVRMagenta::GetRecordingsAmount(bool deleted, int& amount)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   amount = static_cast<int>(m_recordings.size());
+  amount += GetGroupRecordingsAmount();
   std::string amount_str = std::to_string(amount);
   kodi::Log(ADDON_LOG_DEBUG, "Recordings Amount: [%s]", amount_str.c_str());
 
   return PVR_ERROR_NO_ERROR;
+}
+
+void CPVRMagenta::FillPVRRecording(kodi::addon::PVRRecording& kodiRecording, const MagentaRecording& rec)
+{
+  kodiRecording.SetRecordingId(rec.pvrId);
+  kodiRecording.SetTitle(rec.pvrName);
+  kodiRecording.SetPlot(rec.introduce);
+  kodiRecording.SetChannelName(rec.channelName);
+  if (!rec.picture.empty()) {
+    kodiRecording.SetIconPath(rec.picture);
+    kodiRecording.SetThumbnailPath(rec.picture);
+    kodiRecording.SetFanartPath(rec.picture);
+  }
+  if (rec.realRecordLength != 0) {
+    kodiRecording.SetDuration(rec.realRecordLength);
+  }
+  kodiRecording.SetLastPlayedPosition(rec.bookmarkTime);
+  kodiRecording.SetRecordingTime(Utils::StringToTime(PrepareTime(rec.beginTime)));
+  kodiRecording.SetChannelType(PVR_RECORDING_CHANNEL_TYPE_TV);
 }
 
 PVR_ERROR CPVRMagenta::GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet& results)
@@ -1494,36 +1614,30 @@ PVR_ERROR CPVRMagenta::GetRecordings(bool deleted, kodi::addon::PVRRecordingsRes
     return PVR_ERROR_SERVER_ERROR;
   }
 
-  std::vector<MagentaRecording>::iterator it;
-  for (it = m_recordings.begin(); it != m_recordings.end(); ++it)
+  for (const auto& current_recording : m_recordings)
   {
     kodi::addon::PVRRecording kodiRecording;
 
-    kodiRecording.SetRecordingId(it->pvrId);
-    kodiRecording.SetTitle(it->pvrName);
-    kodiRecording.SetPlot(it->introduce);
-    kodiRecording.SetChannelName(it->channelName);
-    if (!it->picture.empty()) {
-      kodiRecording.SetIconPath(it->picture);
-      kodiRecording.SetThumbnailPath(it->picture);
-      kodiRecording.SetFanartPath(it->picture);
-    }
-    if (it->realRecordLength != 0) {
-      kodiRecording.SetDuration(it->realRecordLength);
-    }
-    kodiRecording.SetLastPlayedPosition(it->bookmarkTime);
-    std::string begintime = it->beginTime;
-    begintime.insert(4,1,'-');
-    begintime.insert(7,1,'-');
-    begintime.insert(10,1,' ');
-    begintime.insert(13,1,':');
-    begintime.insert(16,1,':');
-    begintime += " UTC";
-    kodiRecording.SetRecordingTime(Utils::StringToTime(begintime));
-    kodiRecording.SetChannelType(PVR_RECORDING_CHANNEL_TYPE_TV);
+    FillPVRRecording(kodiRecording, current_recording);
+    if (!current_recording.periodPVRTaskName.empty())
+      kodiRecording.SetDirectory(current_recording.periodPVRTaskName);
 
     results.Add(kodiRecording);
-    kodi::Log(ADDON_LOG_DEBUG, "Recording added: %s", it->pvrName.c_str());
+    kodi::Log(ADDON_LOG_DEBUG, "Recording added: %s", current_recording.pvrName.c_str());
+  }
+
+  for (const auto& current_group : m_recGroups)
+  {
+    for (const auto& current_recording : current_group.groupRecordings)
+    {
+      kodi::addon::PVRRecording kodiRecording;
+
+      FillPVRRecording(kodiRecording, current_recording);
+      kodiRecording.SetDirectory(current_group.periodPVRTaskName);
+
+      results.Add(kodiRecording);
+      kodi::Log(ADDON_LOG_DEBUG, "Recording added: %s from group", current_recording.pvrName.c_str(), current_group.periodPVRTaskName.c_str());
+    }
   }
 
   return PVR_ERROR_NO_ERROR;
@@ -1687,6 +1801,7 @@ PVR_ERROR CPVRMagenta::GetTimersAmount(int& amount)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   amount = static_cast<int>(m_timers.size());
+  amount += GetGroupTimersAmount();
   std::string amount_str = std::to_string(amount);
   kodi::Log(ADDON_LOG_DEBUG, "Timers Amount: [%s]", amount_str.c_str());
   return PVR_ERROR_NO_ERROR;
@@ -1709,25 +1824,7 @@ PVR_ERROR CPVRMagenta::GetTimers(kodi::addon::PVRTimersResultSet& results)
     kodiTimer.SetTimerType(TIMER_ONCE_EPG);
     kodiTimer.SetState(PVR_TIMER_STATE_SCHEDULED);
     kodiTimer.SetTitle(it->pvrName);
-/*
-    std::string begintime = it->beginTime;
-    begintime.insert(4,1,'-');
-    begintime.insert(7,1,'-');
-    begintime.insert(10,1,' ');
-    begintime.insert(13,1,':');
-    begintime.insert(16,1,':');
-    begintime += " UTC";
-*/
     kodiTimer.SetStartTime(Utils::StringToTime(PrepareTime(it->beginTime)));
-/*
-    std::string endtime = it->endTime;
-    endtime.insert(4,1,'-');
-    endtime.insert(7,1,'-');
-    endtime.insert(10,1,' ');
-    endtime.insert(13,1,':');
-    endtime.insert(16,1,':');
-    endtime += " UTC";
-*/
     kodiTimer.SetEndTime(Utils::StringToTime(PrepareTime(it->endTime)));
     kodiTimer.SetSummary(it->introduce);
 //    kodiTimer.SetEPGUid(static_cast<unsigned int>());
@@ -1802,7 +1899,7 @@ PVR_ERROR CPVRMagenta::DeleteTimer(const kodi::addon::PVRTimer& timer, bool)
   }
 return PVR_ERROR_FAILED;
 }
-
+/*
 PVR_ERROR CPVRMagenta::CallEPGMenuHook(const kodi::addon::PVRMenuhook& menuhook,
                                     const kodi::addon::PVREPGTag& item)
 {
@@ -1859,6 +1956,7 @@ PVR_ERROR CPVRMagenta::CallMenuHook(const kodi::addon::PVRMenuhook& menuhook)
 
   return PVR_ERROR_NO_ERROR;
 }
+*/
 /*
 bool CPVRMagenta::SeekTime(double time, bool backward, double& startpts)
 {
@@ -1902,6 +2000,7 @@ bool CPVRMagenta::GetChannel(const kodi::addon::PVRChannel& channel, MagentaChan
       myChannel.strIconPath = thisChannel.strIconPath;
 //      myChannel.strStreamURL = thisChannel.strStreamURL;
       myChannel.physicalChannels = thisChannel.physicalChannels;
+      myChannel.isHidden = thisChannel.isHidden;
 
       return true;
     }

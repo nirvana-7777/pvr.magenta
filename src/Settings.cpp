@@ -10,19 +10,6 @@
 
 bool CSettings::Load()
 {
-/*
-  if (!kodi::addon::CheckSettingString("username", m_magentaUsername))
-  {
-    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'username' setting");
-    return false;
-  }
-
-  if (!kodi::addon::CheckSettingString("password", m_magentaPassword))
-  {
-    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'password' setting");
-    return false;
-  }
-*/
   if (!kodi::addon::CheckSettingString("epg_token", m_epgToken))
   {
     /* If setting is unknown fallback to defaults */
@@ -79,6 +66,34 @@ bool CSettings::Load()
     return false;
   }
 
+  if (!kodi::addon::CheckSettingBoolean("customchannels", m_usecustomchannels))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'customchannels' setting");
+    return false;
+  }
+
+  if (!kodi::addon::CheckSettingBoolean("whitelogos", m_whitelogos))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'whitelogos' setting");
+    return false;
+  }
+
+  if (!kodi::addon::CheckSettingBoolean("onlycloud", m_onlycloud))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'onlycloud' setting");
+    return false;
+  }
+
+  if (!kodi::addon::CheckSettingBoolean("deactivatehidden", m_deactivatehidden))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'deactivatehidden' setting");
+    return false;
+  }
+
   if (!kodi::addon::CheckSettingBoolean("higherresolution", m_higherresolution))
   {
     /* If setting is unknown fallback to defaults */
@@ -106,26 +121,6 @@ bool CSettings::Load()
 ADDON_STATUS CSettings::SetSetting(const std::string& settingName,
                                    const std::string& settingValue)
 {
-/*
-  if (settingName == "username")
-  {
-    std::string tmp_sUsername;
-    kodi::Log(ADDON_LOG_DEBUG, "Changed Setting 'username'");
-    tmp_sUsername = m_magentaUsername;
-    m_magentaUsername = settingValue;
-    if (tmp_sUsername != m_magentaUsername)
-      return ADDON_STATUS_NEED_RESTART;
-  }
-  else if (settingName == "password")
-  {
-    std::string tmp_sPassword;
-    kodi::Log(ADDON_LOG_DEBUG, "Changed Setting 'password'");
-    tmp_sPassword = m_magentaPassword;
-    m_magentaPassword = settingValue;
-    if (tmp_sPassword != m_magentaPassword)
-      return ADDON_STATUS_NEED_RESTART;
-  }
-*/
   if (settingName == "epg_token")
   {
     std::string tmp_sToken;
