@@ -155,11 +155,18 @@ struct MagentaDevice
   int status;
 };
 
+struct KodiGenre
+{
+  int genreType;
+  int genreSubType;
+};
+
 struct MagentaGenre
 {
   int genreId;
   int genreType;
   std::string genreName;
+  KodiGenre kodiGenre;
 };
 
 struct MagentaRecording
@@ -344,6 +351,8 @@ private:
   bool AddGroupChannel(const long groupid, const int channelid);
   bool ReleaseCurrentMedia();
   bool GetCategories();
+  int GetGenreIdFromName(const std::string& genreName);
+  KodiGenre GetKodiGenreFromId(const int& genreId);
   void FillRecording(const rapidjson::Value& recordingItem, MagentaRecording& magenta_recording, const int& index);
   void FillPVRRecording(kodi::addon::PVRRecording& kodiRecording, const MagentaRecording& rec);
   bool GetTimersRecordings(const bool isRecording);
@@ -351,6 +360,7 @@ private:
   int GetGroupTimersAmount();
   int GetGroupRecordingsAmount();
   bool GetGenreIds();
+  bool GetMyGenres();
   bool GetDeviceList();
   bool PlaceDevice();
   bool ReplaceOldestDevice();

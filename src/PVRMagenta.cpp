@@ -18,8 +18,7 @@
 #include "rapidjson/stringbuffer.h"
 #include "sha256.h"
 #include "hmac.h"
-//#include "Base64.h"
-//#include <kodi/Filesystem.h>
+#include <kodi/Filesystem.h>
 
 /***********************************************************
   * PVR Client AddOn specific public library functions
@@ -642,10 +641,54 @@ bool CPVRMagenta::GetGenreIds()
       magenta_genre.genreId = stoi(Utils::JsonStringOrEmpty(genres[i], "genreId"));
       magenta_genre.genreType = stoi(Utils::JsonStringOrEmpty(genres[i], "genreType"));
       magenta_genre.genreName = Utils::JsonStringOrEmpty(genres[i], "genreName");
+      magenta_genre.kodiGenre.genreType = 0;
+      magenta_genre.kodiGenre.genreSubType = 0;
 
       m_genres.emplace_back(magenta_genre);
     }
   }
+  return true;
+}
+
+bool CPVRMagenta::GetMyGenres()
+{
+  std::string content;
+  kodi::vfs::CFile myFile;
+  std::string file = kodi::addon::GetAddonPath() + "mygenres.json";
+  kodi::Log(ADDON_LOG_DEBUG, "Opening mygenres: %s", file.c_str());
+  if (myFile.OpenFile(file))
+  {
+    char buffer[1024];
+    while (int bytesRead = myFile.Read(buffer, 1024))
+      content.append(buffer, bytesRead);
+  } else {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to open mygenres.json");
+    return false;
+  }
+
+  rapidjson::Document doc;
+  doc.Parse(content.c_str());
+  if (doc.GetParseError() || !doc.HasMember("genres"))
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to GetMyGenres");
+    return false;
+  }
+  const rapidjson::Value& genres = doc["genres"];
+  int currentGenreId;
+
+  for (rapidjson::SizeType i = 0; i < genres.Size(); i++)
+  {
+    currentGenreId = stoi(Utils::JsonStringOrEmpty(genres[i], "genreId"));
+    for (auto& genre : m_genres) {
+      if (genre.genreId == currentGenreId) {
+        genre.kodiGenre.genreType = stoi(Utils::JsonStringOrEmpty(genres[i], "genreType"));
+        genre.kodiGenre.genreSubType = stoi(Utils::JsonStringOrEmpty(genres[i], "genreSubType"));
+        kodi::Log(ADDON_LOG_DEBUG, "Added mapped genre for Magenta GenreID: %i, Kodi Genre Type: %i, Kodi Genre Subtype: %i",
+                                    genre.genreId, genre.kodiGenre.genreType, genre.kodiGenre.genreSubType);
+      }
+    }
+  }
+
   return true;
 }
 
@@ -844,6 +887,7 @@ CPVRMagenta::CPVRMagenta() :
   }
   GetDeviceList();
   GetGenreIds();
+  GetMyGenres();
   GetTimersRecordings(true); //recordings
   GetTimersRecordings(false); //timers
   LoadChannels();
@@ -1175,6 +1219,32 @@ PVR_ERROR CPVRMagenta::GetDriveSpace(uint64_t& total, uint64_t& used)
   return PVR_ERROR_NO_ERROR;
 }
 
+int CPVRMagenta::GetGenreIdFromName(const std::string& genreName)
+{
+  for (const auto& genre : m_genres)
+  {
+    if (genre.genreName == genreName)
+    {
+      return genre.genreId;
+    }
+  }
+  return 0;
+}
+
+KodiGenre CPVRMagenta::GetKodiGenreFromId(const int& genreId)
+{
+  for (const auto& genre : m_genres)
+  {
+    if (genre.genreId == genreId) {
+      return genre.kodiGenre;
+    }
+  }
+  KodiGenre nullgenre;
+  nullgenre.genreType = 0;
+  nullgenre.genreSubType = 0;
+  return nullgenre;
+}
+
 PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
                                      time_t start,
                                      time_t end,
@@ -1280,8 +1350,18 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
       }
       std::string genres = Utils::JsonStringOrEmpty(epgItem,"genres");
       if (genres != "") {
-        tag.SetGenreType(EPG_GENRE_USE_STRING);
-        tag.SetGenreDescription(genres);
+        std::vector<std::string> out;
+        tokenize(genres, ",", out);
+        int genreId = GetGenreIdFromName(out[0]);
+        KodiGenre myGenre = GetKodiGenreFromId(genreId);
+        if (myGenre.genreType != 0) {
+//          kodi::Log(ADDON_LOG_DEBUG, "Setting genre for id: %i to type: %i subtype: %i", genreId, myGenre.genreType, myGenre.genreSubType); 
+          tag.SetGenreType(myGenre.genreType);
+          tag.SetGenreSubType(myGenre.genreSubType);
+        } else {
+          tag.SetGenreType(EPG_GENRE_USE_STRING);
+          tag.SetGenreDescription(genres);
+        }
       }
       std::string subname = Utils::JsonStringOrEmpty(epgItem,"subName");
       if (subname != "") {

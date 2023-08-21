@@ -17,3 +17,5 @@ v20.7.3
 - Make Channel Logos selectable
 - Play series recordings from directories
 - Option to deactivate hidden channels
+v20.7.4
+- introduce mygenres.json for mapping Magenta GenreIds to Kodi EPG genres
