@@ -507,6 +507,8 @@ void CPVRMagenta::FillRecording(const rapidjson::Value& recordingItem, MagentaRe
   } else {
     magenta_recording.bookmarkTime = 0;
   }
+  magenta_recording.isWatched = (Utils::JsonStringOrEmpty(recordingItem, "isWatched") == "0") ? false : true;
+  magenta_recording.ratingId = stoi(Utils::JsonStringOrEmpty(recordingItem, "ratingId"));
   std::string deleteMode = Utils::JsonStringOrEmpty(recordingItem, "deleteMode");
   if (deleteMode != "") {
     magenta_recording.deleteMode = std::stoi(deleteMode);
@@ -1159,6 +1161,7 @@ void CPVRMagenta::SetStreamProperties(std::vector<kodi::addon::PVRStreamProperty
 PVR_ERROR CPVRMagenta::GetCapabilities(kodi::addon::PVRCapabilities& capabilities)
 {
   capabilities.SetSupportsEPG(true);
+  capabilities.SetSupportsEPGEdl(true);
   capabilities.SetSupportsTV(true);
   capabilities.SetSupportsRadio(false);
   capabilities.SetSupportsChannelGroups(m_settings->IsGroupsenabled());
@@ -1355,7 +1358,7 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
         int genreId = GetGenreIdFromName(out[0]);
         KodiGenre myGenre = GetKodiGenreFromId(genreId);
         if (myGenre.genreType != 0) {
-//          kodi::Log(ADDON_LOG_DEBUG, "Setting genre for id: %i to type: %i subtype: %i", genreId, myGenre.genreType, myGenre.genreSubType); 
+//          kodi::Log(ADDON_LOG_DEBUG, "Setting genre for id: %i to type: %i subtype: %i", genreId, myGenre.genreType, myGenre.genreSubType);
           tag.SetGenreType(myGenre.genreType);
           tag.SetGenreSubType(myGenre.genreSubType);
         } else {
@@ -1377,7 +1380,7 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
         tag.SetFlags(EPG_TAG_FLAG_IS_SERIES);
       }
       std::string rating = Utils::JsonStringOrEmpty(epgItem, "ratingid");
-      if (episode != "-1") {
+      if (rating != "-1") {
           tag.SetParentalRating(std::stoi(rating));
       }
       results.Add(tag);
@@ -1397,11 +1400,39 @@ PVR_ERROR CPVRMagenta::IsEPGTagPlayable(const kodi::addon::PVREPGTag& tag, bool&
     if (channel.iUniqueId == tag.GetUniqueChannelId())
     {
       auto current_time = time(NULL);
-      if ((current_time > tag.GetStartTime()) && (current_time < tag.GetEndTime()))
+      time_t startTime = tag.GetStartTime();
+      if ((current_time > startTime) && (current_time - TIMEBUFFER < startTime))
       {
         bIsPlayable = true;
       }
     }
+  }
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta::GetEPGTagEdl(const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVREDLEntry>& edl)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  //cut before
+  uint64_t elapsedTime = (time(NULL) - tag.GetStartTime());
+  uint64_t edBreak = TIMEBUFFER > elapsedTime ? TIMEBUFFER - elapsedTime : 0;
+
+  kodi::addon::PVREDLEntry entry;
+  entry.SetStart(0);
+  entry.SetEnd(edBreak * 1000);
+  entry.SetType(PVR_EDL_TYPE_COMBREAK);
+  edl.emplace_back(entry);
+
+  //cut after
+  if (time(NULL) > tag.GetEndTime()) {
+      elapsedTime = (time(NULL) - tag.GetEndTime());
+      edBreak = TIMEBUFFER > elapsedTime ? TIMEBUFFER - elapsedTime : TIMEBUFFER;
+      entry.SetStart(edBreak * 1000);
+      entry.SetEnd(TIMEBUFFER * 1000);
+      entry.SetType(PVR_EDL_TYPE_COMBREAK);
+      edl.emplace_back(entry);
   }
 
   return PVR_ERROR_NO_ERROR;
@@ -1667,6 +1698,17 @@ PVR_ERROR CPVRMagenta::GetRecordingsAmount(bool deleted, int& amount)
   return PVR_ERROR_NO_ERROR;
 }
 
+std::string CPVRMagenta::GetGenreFromId(const int& genreId)
+{
+  for (const auto& current_genre : m_genres)
+  {
+    if (current_genre.genreId == genreId) {
+      return current_genre.genreName;
+    }
+  }
+  return "";
+}
+
 void CPVRMagenta::FillPVRRecording(kodi::addon::PVRRecording& kodiRecording, const MagentaRecording& rec)
 {
   kodiRecording.SetRecordingId(rec.pvrId);
@@ -1683,7 +1725,25 @@ void CPVRMagenta::FillPVRRecording(kodi::addon::PVRRecording& kodiRecording, con
   }
   kodiRecording.SetLastPlayedPosition(rec.bookmarkTime);
   kodiRecording.SetRecordingTime(Utils::StringToTime(PrepareTime(rec.beginTime)));
+  KodiGenre myGenre = GetKodiGenreFromId(rec.genres[0]);
+  if (myGenre.genreType != 0) {
+    kodiRecording.SetGenreType(myGenre.genreType);
+    kodiRecording.SetGenreSubType(myGenre.genreSubType);
+  } else {
+    kodiRecording.SetGenreType(EPG_GENRE_USE_STRING);
+    std::string genreNames;
+    for (int i = 0; i < rec.genres.size(); i++) {
+      if (i != 0) {
+        genreNames += ",";
+      }
+      genreNames += GetGenreFromId(rec.genres[i]);
+    }
+    kodiRecording.SetGenreDescription(genreNames);
+  }
   kodiRecording.SetChannelType(PVR_RECORDING_CHANNEL_TYPE_TV);
+  if (!rec.periodPVRTaskName.empty()) {
+    kodiRecording.SetDirectory(rec.periodPVRTaskName);
+  }
 }
 
 PVR_ERROR CPVRMagenta::GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet& results)

@@ -18,4 +18,8 @@ v20.7.3
 - Play series recordings from directories
 - Option to deactivate hidden channels
 v20.7.4
-- introduce mygenres.json for mapping Magenta GenreIds to Kodi EPG genres
+- Introduce mygenres.json for mapping Magenta GenreIds to Kodi EPG genres
+v20.7.5
+- Genres in recordings
+v20.7.6
+- Fix Timeshifting

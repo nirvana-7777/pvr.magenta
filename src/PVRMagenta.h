@@ -22,6 +22,7 @@ static const int MOBILE = 3;
 static const int OTT_STB = 5;
 static const int HYBRID_STB = 17;
 static const long KBM = 150000; // 150 MB
+static const uint64_t TIMEBUFFER = 4 * 60 * 60; //4h time buffer
 static const std::string GUEST_URL      = "https://slbedmfk11100.prod.sngtv.t-online.de:33428/";
 static const std::string SUBNETID = "4901";
 static const std::string AREAID = "1";
@@ -187,6 +188,8 @@ struct MagentaRecording
   int bookmarkTime;
   std::vector<int> genres;
   int deleteMode;
+  bool isWatched;
+  int ratingId;
   std::string periodPVRTaskName;
 };
 
@@ -276,6 +279,7 @@ public:
   PVR_ERROR GetEPGTagStreamProperties(
       const kodi::addon::PVREPGTag& tag,
       std::vector<kodi::addon::PVRStreamProperty>& properties) override;
+  PVR_ERROR GetEPGTagEdl(const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVREDLEntry>& edl) override;
   PVR_ERROR GetProvidersAmount(int& amount) override;
   PVR_ERROR GetProviders(kodi::addon::PVRProvidersResultSet& results) override;
   PVR_ERROR GetChannelGroupsAmount(int& amount) override;
@@ -352,6 +356,7 @@ private:
   bool ReleaseCurrentMedia();
   bool GetCategories();
   int GetGenreIdFromName(const std::string& genreName);
+  std::string GetGenreFromId(const int& genreId);
   KodiGenre GetKodiGenreFromId(const int& genreId);
   void FillRecording(const rapidjson::Value& recordingItem, MagentaRecording& magenta_recording, const int& index);
   void FillPVRRecording(kodi::addon::PVRRecording& kodiRecording, const MagentaRecording& rec);
