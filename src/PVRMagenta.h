@@ -15,6 +15,7 @@
 #include "rapidjson/document.h"
 
 #define TIMER_ONCE_EPG (PVR_TIMER_TYPE_NONE + 1)
+#define TIMER_SERIES_EPG (PVR_TIMER_TYPE_NONE + 2)
 static const int IPTV_STB = 0;
 static const int PC = 1;
 static const int OTT = 2;
@@ -30,6 +31,20 @@ static const std::string TEMPLATENAME = "NGTV";
 static const std::string TIMEZONE = "Europe/Berlin";
 static const std::string DEVICENAME = "Kodi PVR";
 static const std::string EPGDIR = "/EPG/JSON/";
+static const int MAGENTA_BOOKMARK_RECORDING = 2;
+static const int MAGENTA_CAST_ACTOR = 0;
+static const int MAGENTA_CAST_DIRECTOR = 1;
+static const int MAGENTA_CAST_PRODUCER = 4;
+static const int MAGENTA_CAST_WRITER = 5;
+static const int MAGENTA_CAST_MODERATOR = 7;
+static const int MAGENTA_RECORDING_TYPE_RECEIVER = 1;
+static const int MAGENTA_RECORDING_TYPE_CLOUD = 2;
+static const int MAGENTA_RECORDING_DELETE_MODE_WHEN_FULL = 0;
+static const int MAGENTA_RECORDING_DELETE_MODE_MANUAL = 1;
+static const int MAGENTA_RECORDING_DELETE_MODE_KEEP_FIVE = 2;
+static const int MAGENTA_RECORDING_DELETE_MODE_KEEP_TEN = 3;
+static const int MAGENTA_TIMER_TIMEMODE_ANY = 0;
+static const int MAGENTA_TIMER_TIMEMODE_START = 2;
 
 /*
 urls: {
@@ -172,7 +187,7 @@ struct MagentaGenre
 
 struct MagentaRecording
 {
-  int index;
+  unsigned int index;
   std::string pvrId;
   int channelId;
 	int mediaId;
@@ -188,13 +203,17 @@ struct MagentaRecording
   int bookmarkTime;
   std::vector<int> genres;
   int deleteMode;
+  int seriesId;
   bool isWatched;
   int ratingId;
+  std::string programId;
   std::string periodPVRTaskName;
+  unsigned int groupIndex;
 };
 
 struct MagentaRecordingGroup
 {
+  unsigned int index;
   int seriesType;
   int seriesId;
   int mediaId;
@@ -204,6 +223,10 @@ struct MagentaRecordingGroup
   int beginOffset;
   int endOffset;
   int type;
+  int deleteMode;
+  int latestSeriesNum;
+  int timeMode;
+  std::string selectedBeginTime;
   std::string channelName;
   std::vector<MagentaRecording> groupRecordings;
 };
@@ -260,17 +283,6 @@ public:
 
   PVR_ERROR GetCapabilities(kodi::addon::PVRCapabilities& capabilities) override;
   PVR_ERROR GetDriveSpace(uint64_t& total, uint64_t& used) override;
-/*
-  PVR_ERROR CallEPGMenuHook(const kodi::addon::PVRMenuhook& menuhook,
-                            const kodi::addon::PVREPGTag& item) override;
-  PVR_ERROR CallChannelMenuHook(const kodi::addon::PVRMenuhook& menuhook,
-                                const kodi::addon::PVRChannel& item) override;
-  PVR_ERROR CallTimerMenuHook(const kodi::addon::PVRMenuhook& menuhook,
-                              const kodi::addon::PVRTimer& item) override;
-  PVR_ERROR CallRecordingMenuHook(const kodi::addon::PVRMenuhook& menuhook,
-                                  const kodi::addon::PVRRecording& item) override;
-  PVR_ERROR CallSettingsMenuHook(const kodi::addon::PVRMenuhook& menuhook) override;
-*/
   PVR_ERROR GetEPGForChannel(int channelUid,
                              time_t start,
                              time_t end,
@@ -292,6 +304,9 @@ public:
   PVR_ERROR GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet& results) override;
   PVR_ERROR DeletePVR(const std::string pvrId, const bool isRecording);
   PVR_ERROR DeleteRecording(const kodi::addon::PVRRecording& recording) override;
+  PVR_ERROR SetRecordingLastPlayedPosition(const kodi::addon::PVRRecording& recording,
+                                         int lastplayedposition) override;
+  PVR_ERROR GetRecordingLastPlayedPosition(const kodi::addon::PVRRecording& recording, int& position) override;
   PVR_ERROR GetTimerTypes(std::vector<kodi::addon::PVRTimerType>& types) override;
   PVR_ERROR GetTimersAmount(int& amount) override;
   PVR_ERROR GetTimers(kodi::addon::PVRTimersResultSet& results) override;
@@ -318,7 +333,7 @@ public:
 */
 protected:
   std::string GetRecordingURL(const kodi::addon::PVRRecording& recording);
-  bool GetChannel(const kodi::addon::PVRChannel& channel, MagentaChannel& myChannel);
+  bool GetChannel(const int& channelUid, MagentaChannel& myChannel);
 
 private:
   PVR_ERROR CallMenuHook(const kodi::addon::PVRMenuhook& menuhook);
@@ -347,6 +362,12 @@ private:
   std::string GetPlayUrl(const MagentaChannel channel, const int mediaId);
   std::string GetPlay(const int& chanId, const int& mediaId, const bool isTimeshift);
   bool HasStreamingUrl(const MagentaChannel channel);
+  bool GetEPGDetails(std::string& contentCode, rapidjson::Document& epgDoc);
+  bool FillEPGTag(const rapidjson::Value& epgItem, kodi::addon::PVREPGTag& tag);
+  void FillEPGDetails(const rapidjson::Value& epgItem, kodi::addon::PVREPGTag& tag);
+  bool GetEPGPlaybill(const int& channelId, const time_t& start, const time_t& end, rapidjson::Document& epgDoc);
+  bool UpdateEPGEvent(const kodi::addon::PVREPGTag& oldtag);
+  void GetLifetimeValues(std::vector<kodi::addon::PVRTypeIntValue>& lifetimeValues, const bool& isSeries) const;
   void GenerateCNonce();
   bool GuestLogin();
   bool GuestAuthenticate();
@@ -360,10 +381,12 @@ private:
   KodiGenre GetKodiGenreFromId(const int& genreId);
   void FillRecording(const rapidjson::Value& recordingItem, MagentaRecording& magenta_recording, const int& index);
   void FillPVRRecording(kodi::addon::PVRRecording& kodiRecording, const MagentaRecording& rec);
+  bool UpdateBookmarks();
   bool GetTimersRecordings(const bool isRecording);
   bool GetTimers();
   int GetGroupTimersAmount();
   int GetGroupRecordingsAmount();
+  std::string GetPeriodPVRPayload(const MagentaChannel& channel, const kodi::addon::PVRTimer& timer, const std::string& periodPVRTaskId, const bool& isUpdate);
   bool GetGenreIds();
   bool GetMyGenres();
   bool GetDeviceList();

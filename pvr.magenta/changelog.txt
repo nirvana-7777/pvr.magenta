@@ -23,3 +23,9 @@ v20.7.5
 - Genres in recordings
 v20.7.6
 - Fix Timeshifting
+v20.8.0
+- Update timers
+- Fix Playback with bookmark
+- More EPG details (year, cast, imdb number, ...)
+- Serial recordings (add, update, delete)
+- Fix recording margins

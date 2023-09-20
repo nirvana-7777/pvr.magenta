@@ -123,3 +123,27 @@ msgstr ""
 msgctxt "#30048"
 msgid "min left."
 msgstr ""
+
+msgctxt "#30049"
+msgid "Single recording delete policy"
+msgstr ""
+
+msgctxt "#30050"
+msgid "Delete when full"
+msgstr ""
+
+msgctxt "#30051"
+msgid "Manually delete"
+msgstr ""
+
+msgctxt "#30052"
+msgid "Keep last 5 episodes"
+msgstr ""
+
+msgctxt "#30053"
+msgid "Keep last 10 episodes"
+msgstr ""
+
+msgctxt "#30054"
+msgid "Serial recording delete policy"
+msgstr ""

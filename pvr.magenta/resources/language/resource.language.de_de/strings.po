@@ -129,3 +129,27 @@ msgstr ""
 msgctxt "#30048"
 msgid "min Zeit."
 msgstr ""
+
+msgctxt "#30049"
+msgid "Single recording delete policy"
+msgstr "Speicherdauer von Einzelaufnahmen"
+
+msgctxt "#30050"
+msgid "Delete when full"
+msgstr "Bis der Speicher voll ist"
+
+msgctxt "#30051"
+msgid "Manually delete"
+msgstr "Bis manuell löschen speichern"
+
+msgctxt "#30052"
+msgid "Keep last 5 episodes"
+msgstr "Neueste 5 Episoden speichern"
+
+msgctxt "#30053"
+msgid "Keep last 10 episodes"
+msgstr "Neueste 10 Episoden speichern"
+
+msgctxt "#30054"
+msgid "Serial recording delete policy"
+msgstr "Speicherdauer von Serienaufnahmen"

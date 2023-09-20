@@ -115,6 +115,20 @@ bool CSettings::Load()
     return false;
   }
 
+  if (!kodi::addon::CheckSettingInt("deletemode", m_deletemode))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'deletemode' setting");
+    return false;
+  }
+
+  if (!kodi::addon::CheckSettingInt("deletemodeseries", m_deletemodeseries))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'deletemodeseries' setting");
+    return false;
+  }
+
   return true;
 }
 

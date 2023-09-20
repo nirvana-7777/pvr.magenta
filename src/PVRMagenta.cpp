@@ -176,6 +176,7 @@ bool CPVRMagenta::JsonRequest(const std::string& url, const std::string& postDat
     return false;
   }
   if (Utils::JsonStringOrEmpty(doc, "retcode") == "-2") {
+    kodi::Log(ADDON_LOG_DEBUG, "Retcode returned -2 from %s - need to reauthenticate", url.c_str());
     MagentaAuthenticate();
     result = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -187,7 +188,7 @@ bool CPVRMagenta::JsonRequest(const std::string& url, const std::string& postDat
     }
   }
   if (doc.HasMember("retmsg")) {
-    kodi::Log(ADDON_LOG_ERROR, "JSON Request return message: %s", Utils::JsonStringOrEmpty(doc, "retmsg").c_str());
+    kodi::Log(ADDON_LOG_DEBUG, "JSON Request return message: %s", Utils::JsonStringOrEmpty(doc, "retmsg").c_str());
   }
   if (Utils::JsonStringOrEmpty(doc, "retcode") != "0")
   {
@@ -485,6 +486,7 @@ void CPVRMagenta::FillRecording(const rapidjson::Value& recordingItem, MagentaRe
   magenta_recording.beginTime = Utils::JsonStringOrEmpty(recordingItem, "beginTime");
   magenta_recording.endTime = Utils::JsonStringOrEmpty(recordingItem, "endTime");
   std::string beginoffset = Utils::JsonStringOrEmpty(recordingItem, "beginOffset");
+  //kodi::Log(ADDON_LOG_DEBUG, "PVRID: %s, BeginOffSet: %s", magenta_recording.pvrId.c_str(), beginoffset.c_str());
   if (!beginoffset.empty()) {
     magenta_recording.beginOffset = stoi(beginoffset);
   }
@@ -524,6 +526,12 @@ void CPVRMagenta::FillRecording(const rapidjson::Value& recordingItem, MagentaRe
       magenta_recording.genres.emplace_back(stoi(genre));
     }
   }
+  if (recordingItem.HasMember("seriesId")) {
+    magenta_recording.seriesId = stoi(Utils::JsonStringOrEmpty(recordingItem, "seriesId"));
+  }
+  if (recordingItem.HasMember("programId")) {
+    magenta_recording.programId = Utils::JsonStringOrEmpty(recordingItem, "programId");
+  }
 }
 
 bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
@@ -531,8 +539,10 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   if (isRecording) {
     m_recordings.clear();
+    m_recGroups.clear();
   } else {
     m_timers.clear();
+    m_timerGroups.clear();
   }
 
   std::string url = m_epg_https_url + "QueryPVR";
@@ -558,7 +568,7 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
   {
     const rapidjson::Value& recordings = doc["pvrlist"];
 
-    int index = 0;
+    unsigned int index = 1;
     for (rapidjson::Value::ConstValueIterator itr1 = recordings.Begin();
         itr1 != recordings.End(); ++itr1)
     {
@@ -578,6 +588,7 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
       } else if (recordingItem.HasMember("periodPVRTaskName") && (recordingItem.HasMember("periodPVRTaskId")) && (recordingItem.HasMember("pvrList"))) {
         MagentaRecordingGroup recording_group;
 
+        recording_group.index = index++;
         recording_group.periodPVRTaskId = Utils::JsonStringOrEmpty(recordingItem, "periodPVRTaskId");
         recording_group.periodPVRTaskName = Utils::JsonStringOrEmpty(recordingItem, "periodPVRTaskName");
         recording_group.channelName = Utils::JsonStringOrEmpty(recordingItem, "channelName");
@@ -588,6 +599,10 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
         recording_group.type = stoi(Utils::JsonStringOrEmpty(recordingItem, "type"));
         recording_group.beginOffset = stoi(Utils::JsonStringOrEmpty(recordingItem, "beginOffset"));
         recording_group.endOffset = stoi(Utils::JsonStringOrEmpty(recordingItem, "endOffset"));
+        recording_group.deleteMode = stoi(Utils::JsonStringOrEmpty(recordingItem, "deleteMode"));
+        recording_group.latestSeriesNum = stoi(Utils::JsonStringOrEmpty(recordingItem, "latestSeriesNum"));
+        recording_group.timeMode = stoi(Utils::JsonStringOrEmpty(recordingItem, "timeMode"));
+        recording_group.selectedBeginTime = Utils::JsonStringOrEmpty(recordingItem, "selectedBeginTime");
 
         const rapidjson::Value& groupmembers = recordingItem["pvrList"];
 
@@ -600,20 +615,21 @@ bool CPVRMagenta::GetTimersRecordings(const bool isRecording)
 
           //recording_group.groupRecordings.emplace_back(magenta_recording);
           magenta_recording.periodPVRTaskName = Utils::JsonStringOrEmpty(recordingItem, "periodPVRTaskName");
+          magenta_recording.groupIndex = recording_group.index;
           if (isRecording) {
             m_recordings.emplace_back(magenta_recording);
-            kodi::Log(ADDON_LOG_DEBUG, "Added recording to group: %s, ID: %s", magenta_recording.pvrName.c_str(), magenta_recording.pvrId.c_str());
+            kodi::Log(ADDON_LOG_DEBUG, "Added recording to group: %s with seriesId: %i, ID: %s", magenta_recording.pvrName.c_str(), magenta_recording.seriesId, magenta_recording.pvrId.c_str());
           } else {
             m_timers.emplace_back(magenta_recording);
-            kodi::Log(ADDON_LOG_DEBUG, "Added timer to group: %s, ID: %s", magenta_recording.pvrName.c_str(), magenta_recording.pvrId.c_str());
+            kodi::Log(ADDON_LOG_DEBUG, "Added timer to group: %s with seriesId: %i, ID: %s", magenta_recording.pvrName.c_str(), magenta_recording.seriesId, magenta_recording.pvrId.c_str());
           }
         }
         if (isRecording) {
           m_recGroups.emplace_back(recording_group);
-          kodi::Log(ADDON_LOG_DEBUG, "Added recording group: [%s]", recording_group.periodPVRTaskName.c_str());
+          kodi::Log(ADDON_LOG_DEBUG, "Added recording group: %s Index: %i", recording_group.periodPVRTaskName.c_str(), recording_group.seriesId);
         } else {
           m_timerGroups.emplace_back(recording_group);
-          kodi::Log(ADDON_LOG_DEBUG, "Added timer group: [%s]", recording_group.periodPVRTaskName.c_str());
+          kodi::Log(ADDON_LOG_DEBUG, "Added timer group: %s Index: %i", recording_group.periodPVRTaskName.c_str(), recording_group.seriesId);
         }
       }
     }
@@ -865,6 +881,8 @@ CPVRMagenta::CPVRMagenta() :
   srand(time(nullptr));
   GenerateCNonce();
   m_userGroup = "-1";
+  m_currentMediaId = -1;
+  m_currentChannelId = -1;
 
   m_device_id = m_settings->GetMagentaDeviceID();
   if (m_device_id.empty()) {
@@ -892,6 +910,7 @@ CPVRMagenta::CPVRMagenta() :
   GetMyGenres();
   GetTimersRecordings(true); //recordings
   GetTimersRecordings(false); //timers
+  UpdateBookmarks();
   LoadChannels();
 }
 
@@ -1168,11 +1187,17 @@ PVR_ERROR CPVRMagenta::GetCapabilities(kodi::addon::PVRCapabilities& capabilitie
   capabilities.SetSupportsRecordings(true);
   capabilities.SetSupportsRecordingsDelete(true);
   capabilities.SetSupportsRecordingsUndelete(false);
-  capabilities.SetSupportsTimers(true);
   capabilities.SetSupportsRecordingsRename(false);
   capabilities.SetSupportsRecordingsLifetimeChange(false);
+  capabilities.SetSupportsLastPlayedPosition(true);
+  capabilities.SetSupportsTimers(true);
   capabilities.SetSupportsDescrambleInfo(false);
   capabilities.SetSupportsProviders(false);
+  /* PVR recording lifetime values and presentation.*/
+  std::vector<kodi::addon::PVRTypeIntValue> lifetimeValues;
+  GetLifetimeValues(lifetimeValues, true);
+  capabilities.SetRecordingsLifetimeValues(lifetimeValues);
+//  capabilities.SetSupportsAsyncEPGTransfer(true);
 //  capabilities.SetHandlesInputStream(true);
 
   return PVR_ERROR_NO_ERROR;
@@ -1186,7 +1211,7 @@ PVR_ERROR CPVRMagenta::GetBackendName(std::string& name)
 
 PVR_ERROR CPVRMagenta::GetBackendVersion(std::string& version)
 {
-  version = STR(IPTV_VERSION);;
+  version = STR(MAGENTA_VERSION);
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -1204,6 +1229,7 @@ PVR_ERROR CPVRMagenta::GetBackendHostname(std::string& hostname)
 
 uint64_t CPVRMagenta::GetPVRSpace(const int type)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   std::string url = m_epg_https_url + "QueryPVRSpace";
   std::string postData = "{\"type\": " + std::to_string(type) + "}";
 
@@ -1211,11 +1237,13 @@ uint64_t CPVRMagenta::GetPVRSpace(const int type)
   if ((!JsonRequest(url, postData, doc)) || (!doc.HasMember("space"))) {
     return 0;
   }
+  kodi::Log(ADDON_LOG_DEBUG, "finished: [%s]", __FUNCTION__);
   return stol(Utils::JsonStringOrEmpty(doc, "space"));
 }
 
 PVR_ERROR CPVRMagenta::GetDriveSpace(uint64_t& total, uint64_t& used)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   total = GetPVRSpace(0) * KBM;
   used = GetPVRSpace(1) * KBM;
   kodi::Log(ADDON_LOG_DEBUG, "Reported %llu/%llu used/total", used, total);
@@ -1248,6 +1276,253 @@ KodiGenre CPVRMagenta::GetKodiGenreFromId(const int& genreId)
   return nullgenre;
 }
 
+bool CPVRMagenta::GetEPGDetails(std::string& contentCode, rapidjson::Document& epgDoc)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  std::string jsonEpg;
+  int statusCode = 0;
+
+  std::string postData = "{\"filterType\": \"1\","
+                         "\"idType\": \"2\","
+                         "\"properties\": [{"
+                                 "\"name\": \"playbill\","
+                                             "\"include\": \"audioAttribute,casts,channelid,contentRight,country,endtime,episodeInformation,"
+                                             "externalContentCode,externalIds,genres,id,introduce,issubscribed,lifetimeId,name,pictures,producedate,"
+                                             "ratingid,seasonNum,seriesID,starttime,subName,subNum,tipType,type,videoAttribute\"}],"
+                         "\"metaDataVer\": \"Channel/1.1\","
+                         "\"playbill\": \"" + contentCode + "\"}";
+
+  std::string url = m_epg_https_url + "ContentDetail?userContentFilter=" + m_userContentFilter;
+
+  jsonEpg = m_httpClient->HttpPost(url, postData, statusCode);
+//    kodi::Log(ADDON_LOG_DEBUG, "GetProgramme returned: code: %i %s", statusCode, jsonEpg.c_str());
+
+  epgDoc.Parse(jsonEpg.c_str());
+  if (epgDoc.GetParseError())
+  {
+    kodi::Log(ADDON_LOG_ERROR, "[GetEPGDetails] ERROR: error while parsing json");
+    return false;
+  }
+
+  if (epgDoc.HasMember("retcode") || !epgDoc.HasMember("playbilllist")) {
+      MagentaAuthenticate();
+      jsonEpg = m_httpClient->HttpPost(url, postData, statusCode);
+      epgDoc.Parse(jsonEpg.c_str());
+      if (epgDoc.HasMember("retcode") || !epgDoc.HasMember("playbilllist")) {
+        return false;
+      }
+  }
+
+  return true;
+}
+
+bool CPVRMagenta::GetEPGPlaybill(const int& channelId, const time_t& start, const time_t& end, rapidjson::Document& epgDoc)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  std::string startTime = Utils::TimeToString(start);
+  std::string endTime = Utils::TimeToString(end);
+
+  std::string jsonEpg;
+  int statusCode = 0;
+
+  kodi::Log(ADDON_LOG_DEBUG, "Start %u End %u", start, end);
+  kodi::Log(ADDON_LOG_DEBUG, "EPG Request for channel %i from %s to %s", channelId, startTime.c_str(), endTime.c_str());
+
+  std::string postData = "{\"channelid\": \"" + std::to_string(channelId) + "\"," +
+                         "\"type\": 2," +
+                         "\"offset\": 0," +
+                         "\"isFillProgram\": 1," +
+                         "\"properties\": [{" +
+                                 "\"name\": \"playbill\"," +
+                                             "\"include\": \"audioAttribute,casts,channelid,contentRight,endtime,externalContentCode,episodeInformation," +
+                                                            "externalIds,genres,id,introduce,name,pictures,producedate,ratingid,seasonNum,seriesID,starttime," +
+                                                            "subName,subNum,tipType,videoAttribute\"}]," +
+                         "\"count\": 1000," +
+                         "\"begintime\": \"" + startTime + "\"," +
+                         "\"endtime\": \"" + endTime + "\"}";
+
+//    kodi::Log(ADDON_LOG_DEBUG, "PostData %s", postData.c_str());
+
+  std::string url = m_epg_https_url + "PlayBillList?userContentFilter=" + m_userContentFilter;
+
+  jsonEpg = m_httpClient->HttpPost(url, postData, statusCode);
+//    kodi::Log(ADDON_LOG_DEBUG, "GetProgramme returned: code: %i %s", statusCode, jsonEpg.c_str());
+
+  epgDoc.Parse(jsonEpg.c_str());
+  if (epgDoc.GetParseError())
+  {
+    kodi::Log(ADDON_LOG_ERROR, "[GetEPG] ERROR: error while parsing json");
+    return false;
+  }
+
+  if ((epgDoc.HasMember("retcode")) || (!epgDoc.HasMember("playbilllist"))) {
+      kodi::Log(ADDON_LOG_ERROR, "EPG Request returned %s - need to reauthenticate", jsonEpg.c_str());
+      MagentaAuthenticate();
+      jsonEpg = m_httpClient->HttpPost(url, postData, statusCode);
+      epgDoc.Parse(jsonEpg.c_str());
+      if ((epgDoc.HasMember("retcode")) || (!epgDoc.HasMember("playbilllist"))) {
+        return false;
+      }
+  }
+
+  return true;
+}
+
+bool CPVRMagenta::FillEPGTag(const rapidjson::Value& epgItem, kodi::addon::PVREPGTag& tag)
+{
+//  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  std::string id = Utils::JsonStringOrEmpty(epgItem,"id");
+  std::string channelid = Utils::JsonStringOrEmpty(epgItem,"channelid");
+  std::string name = Utils::JsonStringOrEmpty(epgItem,"name");
+  std::string epgstart = Utils::JsonStringOrEmpty(epgItem,"starttime");
+  std::string epgend = Utils::JsonStringOrEmpty(epgItem,"endtime");
+  unsigned int epg_tag_flags = EPG_TAG_FLAG_UNDEFINED;
+
+  if (id.empty() || channelid.empty() || name.empty() || epgstart.empty() || epgend.empty())
+    return false;
+  tag.SetUniqueBroadcastId(std::stoi(id));
+  tag.SetUniqueChannelId(std::stoi(channelid));
+  tag.SetTitle(name);
+//      kodi::Log(ADDON_LOG_DEBUG, "EPG Name %s", tag.GetTitle().c_str());
+  tag.SetPlot(Utils::JsonStringOrEmpty(epgItem,"introduce"));
+
+  tag.SetStartTime(Utils::StringToTime(epgstart));
+  tag.SetEndTime(Utils::StringToTime(epgend));
+
+  std::string image = GetPictureFromItem(epgItem);
+  if (!image.empty()) {
+    tag.SetIconPath(image);
+  }
+  std::string genres = Utils::JsonStringOrEmpty(epgItem,"genres");
+  if (genres != "") {
+    std::vector<std::string> out;
+    tokenize(genres, ",", out);
+    int genreId = GetGenreIdFromName(out[0]);
+    KodiGenre myGenre = GetKodiGenreFromId(genreId);
+    if (myGenre.genreType != 0) {
+//          kodi::Log(ADDON_LOG_DEBUG, "Setting genre for id: %i to type: %i subtype: %i", genreId, myGenre.genreType, myGenre.genreSubType);
+      tag.SetGenreType(myGenre.genreType);
+      tag.SetGenreSubType(myGenre.genreSubType);
+    } else {
+      tag.SetGenreType(EPG_GENRE_USE_STRING);
+      tag.SetGenreDescription(genres);
+    }
+  }
+  std::string subname = Utils::JsonStringOrEmpty(epgItem,"subName");
+  if (subname != "") {
+    tag.SetEpisodeName(subname);
+  }
+  std::string season = Utils::JsonStringOrEmpty(epgItem, "seasonNum");
+  if (season != "") {
+    tag.SetSeriesNumber(std::stoi(season));
+  }
+  std::string episode = Utils::JsonStringOrEmpty(epgItem, "subNum");
+  if (episode != "") {
+    tag.SetEpisodeNumber(std::stoi(episode));
+    epg_tag_flags += EPG_TAG_FLAG_IS_SERIES;
+  }
+  std::string rating = Utils::JsonStringOrEmpty(epgItem, "ratingid");
+  if (rating != "-1") {
+      tag.SetParentalRating(std::stoi(rating));
+  }
+  if (epgItem.HasMember("casts")) {
+    const rapidjson::Value& casts = epgItem["casts"];
+    std::string cast = "";
+    std::string director = "";
+    std::string writer = "";
+    for (rapidjson::SizeType i = 0; i < casts.Size(); i++)
+    {
+      switch (stoi(Utils::JsonStringOrEmpty(casts[i], "roleType"))) {
+        case MAGENTA_CAST_ACTOR:
+          if (cast != "")
+            cast += EPG_STRING_TOKEN_SEPARATOR;
+          cast += Utils::JsonStringOrEmpty(casts[i], "castName");
+          break;
+        case MAGENTA_CAST_DIRECTOR:
+          if (director != "")
+            director += EPG_STRING_TOKEN_SEPARATOR;
+          director += Utils::JsonStringOrEmpty(casts[i], "castName");
+          break;
+        case MAGENTA_CAST_PRODUCER:
+          break;
+        case MAGENTA_CAST_WRITER:
+          if (writer != "")
+            writer += EPG_STRING_TOKEN_SEPARATOR;
+          writer += Utils::JsonStringOrEmpty(casts[i], "castName");
+          break;
+        case MAGENTA_CAST_MODERATOR:
+          if (cast != "")
+            cast += EPG_STRING_TOKEN_SEPARATOR;
+          cast += Utils::JsonStringOrEmpty(casts[i], "castName");
+          break;
+        default:
+          kodi::Log(ADDON_LOG_DEBUG, "Unknown Cast Type: %i CastName: %s", stoi(Utils::JsonStringOrEmpty(casts[i], "roleType")), Utils::JsonStringOrEmpty(casts[i], "castName").c_str());
+      }
+    }
+    tag.SetCast(cast);
+    tag.SetDirector(director);
+    tag.SetWriter(writer);
+  }
+  if (epgItem.HasMember("externalIds")) {
+    std::string externalIds = Utils::JsonStringOrEmpty(epgItem, "externalIds");
+
+    rapidjson::Document externalId;
+    externalId.Parse(externalIds.c_str());
+    if (externalId.GetParseError())
+    {
+      kodi::Log(ADDON_LOG_ERROR, "[GetEPG] ERROR: error while parsing externalIds");
+    } else {
+      for (rapidjson::SizeType i = 0; i < externalId.Size(); i++)
+      {
+        if (Utils::JsonStringOrEmpty(externalId[i], "type") == "imdb")
+        {
+  //        kodi::Log(ADDON_LOG_DEBUG, "Setting IMDB ID: %s", Utils::JsonStringOrEmpty(externalId[i], "id").c_str());
+          tag.SetIMDBNumber(Utils::JsonStringOrEmpty(externalId[i], "id"));
+        }
+      }
+    }
+  }
+  if (epgItem.HasMember("producedate"))
+  {
+    std::string producedate = Utils::JsonStringOrEmpty(epgItem, "producedate");
+    tag.SetYear(std::stoi(producedate.substr(0,4)));
+//    kodi::Log(ADDON_LOG_DEBUG, "Produce Date %s Sub %s Setting Year to %i", producedate.c_str(), producedate.substr(0,4).c_str(), std::stoi(producedate.substr(0,4)));
+  }
+  if (epgItem.HasMember("episodeInformation")) {
+    std::string episodeInformation = Utils::JsonStringOrEmpty(epgItem, "episodeInformation");
+
+    rapidjson::Document episodeInfo;
+    episodeInfo.Parse(episodeInformation.c_str());
+    if (episodeInfo.GetParseError())
+    {
+      kodi::Log(ADDON_LOG_ERROR, "[GetEPG] ERROR: error while parsing episodeInformation");
+    } else {
+      bool isNew = (Utils::JsonStringOrEmpty(episodeInfo, "seriesPremiere") == "1") ? true : false;
+      bool isPremiere = (Utils::JsonStringOrEmpty(episodeInfo, "seasonPremiere") == "1") ? true : false;
+      bool isFinale = (Utils::JsonStringOrEmpty(episodeInfo, "seasonFinale") == "1") ? true : false;
+      if (isNew)
+        epg_tag_flags += EPG_TAG_FLAG_IS_NEW;
+      if (isPremiere)
+        epg_tag_flags += EPG_TAG_FLAG_IS_PREMIERE;
+      if (isFinale)
+        epg_tag_flags += EPG_TAG_FLAG_IS_FINALE;
+    }
+  }
+  if (epgItem.HasMember("seriesID")) {
+    tag.SetSeriesLink(Utils::JsonStringOrEmpty(epgItem, "seriesID"));
+  }
+  tag.SetFlags(epg_tag_flags);
+  //  kodi::Log(ADDON_LOG_DEBUG, "finished: [%s]", __FUNCTION__);
+  return true;
+}
+
+void CPVRMagenta::FillEPGDetails(const rapidjson::Value& epgItem, kodi::addon::PVREPGTag& tag)
+{
+
+}
+
 PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
                                      time_t start,
                                      time_t end,
@@ -1275,125 +1550,68 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
   std::string jsonEpg2 = m_httpClient->HttpPost(url2, postData2, statusCode2);
   kodi::Log(ADDON_LOG_DEBUG, "GetDataVersion returned: code: %i %s", statusCode2, jsonEpg2.c_str());
 */
-  for (const auto& channel : m_channels)
+  rapidjson::Document epgDoc;
+
+  if (!GetEPGPlaybill(channelUid, start, end, epgDoc))
+    return PVR_ERROR_FAILED;
+
+  const rapidjson::Value& epgitems = epgDoc["playbilllist"];
+
+  kodi::Log(ADDON_LOG_DEBUG, "[epg] iterate entries");
+  for (rapidjson::Value::ConstValueIterator itr1 = epgitems.Begin();
+        itr1 != epgitems.End(); ++itr1)
   {
-
-    if (channel.iUniqueId != channelUid)
-      continue;
-
-    std::string startTime = Utils::TimeToString(start);
-    std::string endTime = Utils::TimeToString(end);
-
-    std::string jsonEpg;
-    int statusCode = 0;
-
-    kodi::Log(ADDON_LOG_DEBUG, "Start %u End %u", start, end);
-    kodi::Log(ADDON_LOG_DEBUG, "EPG Request for channel x from %s to %s", startTime.c_str(), endTime.c_str());
-
-    std::string postData = "{\"channelid\": \"" + std::to_string(channel.iUniqueId) + "\"," +
-    	                     "\"type\": 2," +
-    	                     "\"offset\": 0," +
-    	                     "\"isFillProgram\": 1," +
-    	                     "\"properties\": [{" +
-    		                           "\"name\": \"playbill\"," +
-    		                                       "\"include\": \"audioAttribute,channelid,contentRight,endtime,externalContentCode,episodeInformation," +
-                                                              "externalIds,genres,id,introduce,name,pictures,ratingid,seasonNum,seriesID,starttime," +
-                                                              "subName,subNum,tipType,videoAttribute\"}]," +
-    	                     "\"count\": 1000," +
-    	                     "\"begintime\": \"" + startTime + "\"," +
-    	                     "\"endtime\": \"" + endTime + "\"}";
-
-//    kodi::Log(ADDON_LOG_DEBUG, "PostData %s", postData.c_str());
-
-    std::string url = m_epg_https_url + "PlayBillList?userContentFilter=" + m_userContentFilter;
-
-    jsonEpg = m_httpClient->HttpPost(url, postData, statusCode);
-//    kodi::Log(ADDON_LOG_DEBUG, "GetProgramme returned: code: %i %s", statusCode, jsonEpg.c_str());
-
-    rapidjson::Document epgDoc;
-    epgDoc.Parse(jsonEpg.c_str());
-    if (epgDoc.GetParseError())
-    {
-      kodi::Log(ADDON_LOG_ERROR, "[GetEPG] ERROR: error while parsing json");
-      return PVR_ERROR_SERVER_ERROR;
-    }
-
-    if (epgDoc.HasMember("retcode")) {
-        MagentaAuthenticate();
-        jsonEpg = m_httpClient->HttpPost(url, postData, statusCode);
-        epgDoc.Parse(jsonEpg.c_str());
-        if (epgDoc.HasMember("retcode")) {
-          return PVR_ERROR_SERVER_ERROR;
-        }
-    }
-
-    kodi::Log(ADDON_LOG_DEBUG, "[epg] iterate entries");
-
-    const rapidjson::Value& epgitems = epgDoc["playbilllist"];
-    for (rapidjson::Value::ConstValueIterator itr1 = epgitems.Begin();
-          itr1 != epgitems.End(); ++itr1)
-    {
-      const rapidjson::Value& epgItem = (*itr1);
-
-      kodi::addon::PVREPGTag tag;
-
-      tag.SetUniqueBroadcastId(std::stoi(Utils::JsonStringOrEmpty(epgItem,"id")));
-      tag.SetUniqueChannelId(channel.iUniqueId);
-      tag.SetTitle(Utils::JsonStringOrEmpty(epgItem,"name"));
-      tag.SetPlot(Utils::JsonStringOrEmpty(epgItem,"introduce"));
-
-      std::string epgstart = Utils::JsonStringOrEmpty(epgItem,"starttime");
-      std::string epgend = Utils::JsonStringOrEmpty(epgItem,"endtime");
-      tag.SetStartTime(Utils::StringToTime(epgstart));
-      tag.SetEndTime(Utils::StringToTime(epgend));
-
-      std::string image = GetPictureFromItem(epgItem);
-      if (!image.empty()) {
-        tag.SetIconPath(image);
-      }
-      std::string genres = Utils::JsonStringOrEmpty(epgItem,"genres");
-      if (genres != "") {
-        std::vector<std::string> out;
-        tokenize(genres, ",", out);
-        int genreId = GetGenreIdFromName(out[0]);
-        KodiGenre myGenre = GetKodiGenreFromId(genreId);
-        if (myGenre.genreType != 0) {
-//          kodi::Log(ADDON_LOG_DEBUG, "Setting genre for id: %i to type: %i subtype: %i", genreId, myGenre.genreType, myGenre.genreSubType);
-          tag.SetGenreType(myGenre.genreType);
-          tag.SetGenreSubType(myGenre.genreSubType);
-        } else {
-          tag.SetGenreType(EPG_GENRE_USE_STRING);
-          tag.SetGenreDescription(genres);
-        }
-      }
-      std::string subname = Utils::JsonStringOrEmpty(epgItem,"subName");
-      if (subname != "") {
-        tag.SetEpisodeName(subname);
-      }
-      std::string season = Utils::JsonStringOrEmpty(epgItem, "seasonNum");
-      if (season != "") {
-        tag.SetSeriesNumber(std::stoi(season));
-      }
-      std::string episode = Utils::JsonStringOrEmpty(epgItem, "subNum");
-      if (episode != "") {
-        tag.SetEpisodeNumber(std::stoi(episode));
-        tag.SetFlags(EPG_TAG_FLAG_IS_SERIES);
-      }
-      std::string rating = Utils::JsonStringOrEmpty(epgItem, "ratingid");
-      if (rating != "-1") {
-          tag.SetParentalRating(std::stoi(rating));
-      }
+    kodi::addon::PVREPGTag tag;
+    if (FillEPGTag((*itr1), tag))
       results.Add(tag);
+  }
+  return PVR_ERROR_NO_ERROR;
+}
+
+bool CPVRMagenta::UpdateEPGEvent(const kodi::addon::PVREPGTag& oldtag)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  rapidjson::Document epgDoc;
+  kodi::addon::PVREPGTag newtag = oldtag;
+
+  if (!GetEPGPlaybill(oldtag.GetUniqueChannelId(), oldtag.GetStartTime(), oldtag.GetEndTime(), epgDoc))
+    return false;
+
+  const rapidjson::Value& epgitems = epgDoc["playbilllist"];
+
+  for (rapidjson::Value::ConstValueIterator itr1 = epgitems.Begin();
+        itr1 != epgitems.End(); ++itr1)
+  {
+    const rapidjson::Value& epgItem = (*itr1);
+
+    std::string externalContentCode = Utils::JsonStringOrEmpty(epgItem, "externalContentCode");
+
+    kodi::Log(ADDON_LOG_DEBUG, "Content Code: %s", externalContentCode.c_str());
+
+    rapidjson::Document epgDoc2;
+
+    if (!GetEPGDetails(externalContentCode, epgDoc2))
+      return false;
+
+    const rapidjson::Value& detailitems = epgDoc2["playbilllist"];
+    for (rapidjson::Value::ConstValueIterator itr2 = detailitems.Begin();
+          itr2 != detailitems.End(); ++itr2)
+    {
+      FillEPGDetails((*itr2), newtag);
     }
   }
 
-  return PVR_ERROR_NO_ERROR;
+  kodi::addon::CInstancePVRClient::EpgEventStateChange(newtag, EPG_EVENT_UPDATED);
+  return true;
 }
 
 PVR_ERROR CPVRMagenta::IsEPGTagPlayable(const kodi::addon::PVREPGTag& tag, bool& bIsPlayable)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   bIsPlayable = false;
+
+//  UpdateEPGEvent(tag);
 
   for (const auto& channel : m_channels)
   {
@@ -1440,6 +1658,9 @@ PVR_ERROR CPVRMagenta::GetEPGTagEdl(const kodi::addon::PVREPGTag& tag, std::vect
 
 bool CPVRMagenta::ReleaseCurrentMedia()
 {
+  if ((m_currentMediaId == -1) || (m_currentChannelId == -1))
+    return true;
+
   std::string url = m_epg_https_url + "ReleasePlaySession";
   std::string postData = "{\"mediaId\": \"" + std::to_string(m_currentMediaId) + "\","
                            "\"contentId\": \"" + std::to_string(m_currentChannelId) + "\","
@@ -1456,9 +1677,7 @@ std::string CPVRMagenta::GetPlay(const int& chanId, const int& mediaId, const bo
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
-  if (!ReleaseCurrentMedia()) {
-    return "";
-  }
+  ReleaseCurrentMedia();
 
   std::string checksum = hmac<SHA256>(std::to_string(chanId), m_session_key);
   kodi::Log(ADDON_LOG_DEBUG, "Checksum: %s", checksum.c_str());
@@ -1543,6 +1762,8 @@ PVR_ERROR CPVRMagenta::GetEPGTagStreamProperties(
       if (playurl.empty())
         return PVR_ERROR_FAILED;
 
+      m_currentMediaId = mediaId;
+      m_currentChannelId = chanId;
       kodi::Log(ADDON_LOG_DEBUG, "[PLAY Timeshifted] url: %s", playurl.c_str());
       SetStreamProperties(properties, playurl, false, true, false);
     }
@@ -1599,7 +1820,8 @@ PVR_ERROR CPVRMagenta::GetChannelStreamProperties(
     const kodi::addon::PVRChannel& channel, std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
   MagentaChannel addonChannel;
-  GetChannel(channel, addonChannel);
+  if (!GetChannel(channel.GetUniqueId(), addonChannel))
+    return PVR_ERROR_FAILED;
 
   m_currentMediaId = SelectMediaId(addonChannel, false);
   m_currentChannelId = addonChannel.iUniqueId;
@@ -1887,14 +2109,14 @@ namespace
 {
 struct TimerType : kodi::addon::PVRTimerType
 {
-  TimerType(
+  TimerType(int defaultLifetimeValue,
             unsigned int id,
             unsigned int attributes,
-            const std::string& description)
+            const std::string& description,
   //          const std::vector<kodi::addon::PVRTypeIntValue>& priorityValues =
   //              std::vector<kodi::addon::PVRTypeIntValue>(),
-  //          const std::vector<kodi::addon::PVRTypeIntValue>& lifetimeValues =
-  //              std::vector<kodi::addon::PVRTypeIntValue>(),
+            const std::vector<kodi::addon::PVRTypeIntValue>& lifetimeValues =
+                std::vector<kodi::addon::PVRTypeIntValue>())
   //          const std::vector<kodi::addon::PVRTypeIntValue>& dupEpisodesValues =
   //              std::vector<kodi::addon::PVRTypeIntValue>())
   {
@@ -1902,37 +2124,146 @@ struct TimerType : kodi::addon::PVRTimerType
     SetAttributes(attributes);
     SetDescription(description);
 //    SetPriorities(priorityValues, settings->GetDvrPriority());
-//    SetLifetimes(lifetimeValues, LifetimeMapper::TvhToKodi(settings->GetDvrLifetime()));
+    SetLifetimes(lifetimeValues, defaultLifetimeValue);
 //    SetPreventDuplicateEpisodes(dupEpisodesValues, settings->GetDvrDupdetect());
   }
 };
 
 } // unnamed namespace
 
+bool CPVRMagenta::UpdateBookmarks()
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  std::string url = m_epg_https_url + "QueryBookmark";
+  std::string postData = "{\"bookmarkType\": " + std::to_string(MAGENTA_BOOKMARK_RECORDING) + ","
+                          "\"count\": -1}";
+
+  rapidjson::Document doc;
+  if (!JsonRequest(url, postData, doc) || !doc.HasMember("bookmarkList")) {
+    return false;
+  }
+  else {
+    const rapidjson::Value& bookmarkList = doc["bookmarkList"];
+
+    for (rapidjson::Value::ConstValueIterator itr2 = bookmarkList.Begin();
+        itr2 != bookmarkList.End(); ++itr2)
+    {
+      const rapidjson::Value& bookmarkItem = (*itr2);
+
+      for (auto& recording : m_recordings)
+      {
+        if ( Utils::JsonStringOrEmpty(bookmarkItem, "contentId") == recording.pvrId)
+        {
+          recording.bookmarkTime = stoi(Utils::JsonStringOrEmpty(bookmarkItem, "rangeTime"));
+          kodi::Log(ADDON_LOG_DEBUG, "Updating position %i for Recording ID: %s", recording.bookmarkTime, recording.pvrId.c_str());
+        }
+      }
+    }
+  }
+  return true;
+}
+
+PVR_ERROR CPVRMagenta::SetRecordingLastPlayedPosition(const kodi::addon::PVRRecording& recording,
+    int lastplayedposition)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "Setting position %i for Recording ID: %s", lastplayedposition, recording.GetRecordingId().c_str());
+
+  std::string url = m_epg_https_url + "AddBookmark";
+  std::string postData = "{\"bookmarkList\": [{"
+  		                    "\"contentId\": \"" + recording.GetRecordingId() + "\","
+  		                    "\"bookmarkType\": " + std::to_string(MAGENTA_BOOKMARK_RECORDING) + ","
+  		                    "\"rangeTime\": " + std::to_string(lastplayedposition) + "}]}";
+
+  rapidjson::Document doc;
+  if (!JsonRequest(url, postData, doc)) {
+    return PVR_ERROR_FAILED;
+  }
+  UpdateBookmarks();
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta::GetRecordingLastPlayedPosition(const kodi::addon::PVRRecording& recording, int& position)
+{
+  position = recording.GetLastPlayedPosition();
+  kodi::Log(ADDON_LOG_DEBUG, "Returning position %i for Recording ID: %s", position, recording.GetRecordingId().c_str());
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+void CPVRMagenta::GetLifetimeValues(std::vector<kodi::addon::PVRTypeIntValue>& lifetimeValues, const bool& isSeries) const
+{
+  if (isSeries) {
+    lifetimeValues = {
+      {MAGENTA_RECORDING_DELETE_MODE_WHEN_FULL, kodi::addon::GetLocalizedString(30050)},
+      {MAGENTA_RECORDING_DELETE_MODE_MANUAL, kodi::addon::GetLocalizedString(30051)},
+      {MAGENTA_RECORDING_DELETE_MODE_KEEP_FIVE, kodi::addon::GetLocalizedString(30052)},
+      {MAGENTA_RECORDING_DELETE_MODE_KEEP_TEN, kodi::addon::GetLocalizedString(30053)}
+    };
+  } else {
+    lifetimeValues = {
+      {MAGENTA_RECORDING_DELETE_MODE_WHEN_FULL, kodi::addon::GetLocalizedString(30050)},
+      {MAGENTA_RECORDING_DELETE_MODE_MANUAL, kodi::addon::GetLocalizedString(30051)}
+    };
+  }
+}
+
 PVR_ERROR CPVRMagenta::GetTimerTypes(std::vector<kodi::addon::PVRTimerType>& types)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
+  /* PVR_Timer.iLifetime values and presentation.*/
+  std::vector<kodi::addon::PVRTypeIntValue> lifetimeValues;
+  GetLifetimeValues(lifetimeValues, false);
+
   unsigned int TIMER_ONCE_EPG_ATTRIBS =
        PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME |
        PVR_TIMER_TYPE_SUPPORTS_END_TIME | PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE |
-       PVR_TIMER_TYPE_SUPPORTS_START_END_MARGIN | PVR_TIMER_TYPE_SUPPORTS_PRIORITY |
-       PVR_TIMER_TYPE_SUPPORTS_LIFETIME | PVR_TIMER_TYPE_SUPPORTS_ENABLE_DISABLE;
+       PVR_TIMER_TYPE_SUPPORTS_START_END_MARGIN | PVR_TIMER_TYPE_SUPPORTS_LIFETIME;
 
-       /* One-shot epg based */
-     types.emplace_back(TimerType(
-         /* Settings */
+   /* One-shot epg based */
+  types.emplace_back(TimerType(
+    /* Settings */
 //         m_settings,
-         /* Type id. */
-         TIMER_ONCE_EPG,
-         /* Attributes. */
-         TIMER_ONCE_EPG_ATTRIBS,
-         /* Let Kodi generate the description. */
-         "Einzelaufnahme"));
+    m_settings->GetDeleteMode(),
+    /* Type id. */
+    TIMER_ONCE_EPG,
+    /* Attributes. */
+    TIMER_ONCE_EPG_ATTRIBS,
+    /* Let Kodi generate the description. */
+    "Einzelaufnahme",
 //         /* Values definitions for priorities. */
 //         priorityValues,
-//         /* Values definitions for lifetime. */
-//         lifetimeValues));
+         /* Values definitions for lifetime. */
+    lifetimeValues));
+
+  unsigned int TIMER_SERIES_EPG_ATTRIBS =
+      PVR_TIMER_TYPE_SUPPORTS_CHANNELS | PVR_TIMER_TYPE_SUPPORTS_START_TIME |
+//      PVR_TIMER_TYPE_SUPPORTS_END_TIME |
+      PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE |
+      PVR_TIMER_TYPE_SUPPORTS_START_END_MARGIN | PVR_TIMER_TYPE_SUPPORTS_LIFETIME |
+      PVR_TIMER_TYPE_SUPPORTS_START_ANYTIME | PVR_TIMER_TYPE_SUPPORTS_END_ANYTIME |
+      PVR_TIMER_TYPE_IS_REPEATING | PVR_TIMER_TYPE_REQUIRES_EPG_SERIESLINK_ON_CREATE;
+
+  GetLifetimeValues(lifetimeValues, true);
+
+      /* Series epg based */
+  types.emplace_back(TimerType(
+       /* Settings */
+   //         m_settings,
+  m_settings->GetDeleteModeSeries(),
+  /* Type id. */
+  TIMER_SERIES_EPG,
+  /* Attributes. */
+  TIMER_SERIES_EPG_ATTRIBS,
+  /* Let Kodi generate the description. */
+  "Serienaufnahme",
+   //         /* Values definitions for priorities. */
+   //         priorityValues,
+            /* Values definitions for lifetime. */
+   lifetimeValues));
 
   return PVR_ERROR_NO_ERROR;
 }
@@ -1955,181 +2286,281 @@ PVR_ERROR CPVRMagenta::GetTimers(kodi::addon::PVRTimersResultSet& results)
     return PVR_ERROR_SERVER_ERROR;
   }
 
+  for (const auto& timerGroup : m_timerGroups)
+  {
+    // add group
+    kodi::addon::PVRTimer tagGroup;
+    tagGroup.SetTimerType(TIMER_SERIES_EPG);
+    tagGroup.SetState(PVR_TIMER_STATE_SCHEDULED);
+    tagGroup.SetTitle(timerGroup.periodPVRTaskName);
+    tagGroup.SetClientIndex(static_cast<unsigned int>(timerGroup.index));
+    tagGroup.SetClientChannelUid(timerGroup.channelId);
+    tagGroup.SetMarginStart(timerGroup.beginOffset);
+    tagGroup.SetMarginEnd(timerGroup.endOffset);
+    int deleteMode = timerGroup.deleteMode;
+    if ((deleteMode == 2) && (timerGroup.latestSeriesNum == 10))
+      deleteMode = 3;
+    tagGroup.SetLifetime(deleteMode);
+    if ((timerGroup.timeMode == 2) && (!timerGroup.selectedBeginTime.empty()))
+    {
+      std::string beginTime = timerGroup.selectedBeginTime;
+      beginTime = "19700102" + beginTime;
+      time_t startTime = Utils::StringToTime(PrepareTime(beginTime)) - 3600;
+      tagGroup.SetStartTime(startTime);
+    } else {
+      tagGroup.SetStartAnyTime(true);
+    }
+    tagGroup.SetEndAnyTime(true);
+//    tagGroup.SetRecordingGroup(static_cast<unsigned int>(timerGroup.seriesId));
+    tagGroup.SetSeriesLink(std::to_string(timerGroup.seriesId));
+
+    results.Add(tagGroup);
+
+    kodi::Log(ADDON_LOG_DEBUG, "Timer Group added: %s for seriesId: %i with index: %i", timerGroup.periodPVRTaskName.c_str(), timerGroup.seriesId, timerGroup.index);
+  }
   std::vector<MagentaRecording>::iterator it;
   for (it = m_timers.begin(); it != m_timers.end(); ++it)
   {
     kodi::addon::PVRTimer kodiTimer;
 
     kodiTimer.SetClientIndex(static_cast<unsigned int>(it->index));
-    kodiTimer.SetTimerType(TIMER_ONCE_EPG);
     kodiTimer.SetState(PVR_TIMER_STATE_SCHEDULED);
     kodiTimer.SetTitle(it->pvrName);
     kodiTimer.SetStartTime(Utils::StringToTime(PrepareTime(it->beginTime)));
     kodiTimer.SetEndTime(Utils::StringToTime(PrepareTime(it->endTime)));
+    kodiTimer.SetMarginStart(it->beginOffset);
+    kodiTimer.SetMarginEnd(it->endOffset);
     kodiTimer.SetSummary(it->introduce);
-//    kodiTimer.SetEPGUid(static_cast<unsigned int>());
+    kodiTimer.SetLifetime(it->deleteMode);
+    kodiTimer.SetEPGUid(std::stoi(it->programId));
     kodiTimer.SetClientChannelUid(it->channelId);
+    kodiTimer.SetTimerType(TIMER_ONCE_EPG);
+    if (!it->periodPVRTaskName.empty()) {
+//      kodiTimer.SetRecordingGroup(static_cast<unsigned int>(it->seriesId));
+//      kodiTimer.SetDirectory(it->periodPVRTaskName);
+      kodiTimer.SetSeriesLink(std::to_string(it->seriesId));
+      kodiTimer.SetParentClientIndex(it->groupIndex);
+    } else {
+      kodiTimer.SetParentClientIndex(PVR_TIMER_NO_PARENT);
+    }
 
 //    kodiTimer.SetPlot(it->introduce);
 //    kodiTimer.SetChannelName(it->channelName);
 //    kodiTimer.SetChannelType(PVR_RECORDING_CHANNEL_TYPE_TV);
 
     results.Add(kodiTimer);
-    kodi::Log(ADDON_LOG_DEBUG, "Timer added: %s", it->pvrName.c_str());
+    kodi::Log(ADDON_LOG_DEBUG, "Timer added: %s, ProgramID; %s", it->pvrName.c_str(), it->programId.c_str());
   }
+
   return PVR_ERROR_NO_ERROR;
+}
+
+std::string CPVRMagenta::GetPeriodPVRPayload(const MagentaChannel& channel, const kodi::addon::PVRTimer& timer, const std::string& periodPVRTaskId, const bool& isUpdate)
+{
+  std::string payload;
+  int latestSeriesNum = 0;
+  int deleteMode = timer.GetLifetime();
+  if (deleteMode == 2)
+    latestSeriesNum = 5;
+  if (deleteMode == 3) {
+    latestSeriesNum = 10;
+    deleteMode = 2;
+  }
+
+  payload = "{\"action\": \"";
+  payload += (isUpdate) ? "UPDATE" : "ADD";
+  payload += "\",\"conflictCheckType\": 1,"
+                "\"strategyType\": 0,"
+                "\"task\": {"
+                            "\"mediaId\": \"" + std::to_string(SelectMediaId(channel, true)) + "\","
+                            "\"beginOffset\": " + std::to_string(timer.GetMarginStart()) + ","
+                            "\"deleteMode\": " + std::to_string(deleteMode) + ","
+                            "\"endOffset\": " + std::to_string(timer.GetMarginEnd()) + ","
+                            "\"strategyType\": 0,"
+                            "\"type\": " + std::to_string(MAGENTA_RECORDING_TYPE_CLOUD) + ",";
+  if (!periodPVRTaskId.empty()) {
+    payload += "\"periodPVRTaskId\": \"" + periodPVRTaskId + "\",";
+  }
+  if (deleteMode == 2) {
+    payload += "\"latestSeriesNum\": " + std::to_string(latestSeriesNum) + ",";
+  }
+  int timeMode = MAGENTA_TIMER_TIMEMODE_ANY;
+  if (!timer.GetStartAnyTime())
+  {
+    timeMode = MAGENTA_TIMER_TIMEMODE_START;
+    std::string starttime = Utils::TimeToString(timer.GetStartTime()).substr(8,6);
+    payload += "\"selectedBeginTime\": \"" + starttime + "\",";
+  }
+  payload += "\"playbillID\": \"" + std::to_string(timer.GetEPGUid()) + "\","
+             "\"seriesID\": \"" + timer.GetSeriesLink() + "\","
+             "\"seriesType\": \"2\","
+             "\"timeMode\": \"" + std::to_string(timeMode) + "\"}}";
+
+  return payload;
 }
 
 PVR_ERROR CPVRMagenta::AddTimer(const kodi::addon::PVRTimer& timer)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
-  for (const auto& channel : m_channels)
-  {
-    if (channel.iUniqueId == timer.GetClientChannelUid()) {
-      std::string url = m_epg_https_url + "AddPVR";
-      std::string postData = "{\"mediaId\": \"" + std::to_string(SelectMediaId(channel, true)) + "\","
-    	                        "\"beginOffset\": " + std::to_string(timer.GetMarginStart()) + ","
-    	                        "\"deleteMode\": 1,"
-    	                        "\"endOffset\": " + std::to_string(timer.GetMarginEnd()) + ","
-    	                        "\"strategyType\": 0,"
-    	                        "\"type\": 2,"
-    	                        "\"programId\": \"" + std::to_string(timer.GetEPGUid()) + "\"}";
-//      kodi::Log(ADDON_LOG_DEBUG, "PostData: %s", postData.c_str());
-      rapidjson::Document doc;
+  std::string url;
+  std::string postData;
+  rapidjson::Document doc;
+
+  MagentaChannel addonChannel;
+  if (!GetChannel(timer.GetClientChannelUid(), addonChannel))
+    return PVR_ERROR_FAILED;
+
+  switch (timer.GetTimerType()) {
+    case TIMER_ONCE_EPG:
+      url = m_epg_https_url + "AddPVR";
+      postData = "{\"mediaId\": \"" + std::to_string(SelectMediaId(addonChannel, true)) + "\","
+                  "\"beginOffset\": " + std::to_string(timer.GetMarginStart()) + ","
+                  "\"deleteMode\": " + std::to_string(m_settings->GetDeleteMode()) + ","
+                  "\"endOffset\": " + std::to_string(timer.GetMarginEnd()) + ","
+                  "\"strategyType\": 0,"
+                  "\"type\": " + std::to_string(MAGENTA_RECORDING_TYPE_CLOUD) + ","
+                  "\"programId\": \"" + std::to_string(timer.GetEPGUid()) + "\"}";
+  //      kodi::Log(ADDON_LOG_DEBUG, "PostData: %s", postData.c_str());
       if (!JsonRequest(url, postData, doc)) {
         return PVR_ERROR_SERVER_ERROR;
       }
       else {
-        kodi::Log(ADDON_LOG_DEBUG, "Added timer for PVRID: %s", Utils::JsonStringOrEmpty(doc, "pvrId").c_str());
-        kodi::QueueNotification(QUEUE_INFO, "Aufnahme", "Aufnahme programmiert");
-        kodi::addon::CInstancePVRClient::TriggerTimerUpdate();
-        auto current_time = time(NULL);
-        if (current_time > timer.GetStartTime()) {
-          kodi::addon::CInstancePVRClient::TriggerRecordingUpdate();
-        }
+        kodi::Log(ADDON_LOG_DEBUG, "Added single timer for PVRID: %s", Utils::JsonStringOrEmpty(doc, "pvrId").c_str());
+        kodi::QueueNotification(QUEUE_INFO, "Aufnahme", "Einzelaufnahme programmiert");
       }
-    }
+      break;
+    case TIMER_SERIES_EPG:
+      kodi::Log(ADDON_LOG_DEBUG, "Add Series Timer");
+
+      url = m_epg_https_url + "PeriodPVRMgmt";
+      postData = GetPeriodPVRPayload(addonChannel, timer, "", false);
+
+      if (!JsonRequest(url, postData, doc)) {
+        return PVR_ERROR_SERVER_ERROR;
+      }
+      else {
+        kodi::Log(ADDON_LOG_DEBUG, "Added series timer for periodPVRTaskId: %s", Utils::JsonStringOrEmpty(doc, "periodPVRTaskId").c_str());
+        kodi::QueueNotification(QUEUE_INFO, "Aufnahme", "Serienaufnahme programmiert");
+      }
+      break;
+    default:
+      kodi::Log(ADDON_LOG_DEBUG, "Unknown Timer Type");
+      return PVR_ERROR_FAILED;
   }
 
+  kodi::addon::CInstancePVRClient::TriggerTimerUpdate();
+  auto current_time = time(NULL);
+  if (current_time > timer.GetStartTime()) {
+    kodi::addon::CInstancePVRClient::TriggerRecordingUpdate();
+  }
   return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR CPVRMagenta::UpdateTimer(const kodi::addon::PVRTimer& timer)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-/*
-  if ((timer.GetTimerType() == TIMER_ONCE_MANUAL) || (timer.GetTimerType() == TIMER_ONCE_EPG))
+
+  std::string url;
+  std::string postData;
+  rapidjson::Document doc;
+
+  if (timer.GetTimerType() == TIMER_ONCE_EPG)
   {
-     one shot timer
+    for (const auto& mytimer : m_timers)
+    {
+      if (timer.GetClientIndex() != mytimer.index)
+        continue;
+
+      url = m_epg_https_url + "UpdatePVR";
+      postData = "{\"mediaId\": \"" + std::to_string(mytimer.mediaId) + "\","
+                  "\"beginOffset\": " + std::to_string(timer.GetMarginStart()) + ","
+                  "\"deleteMode\": " + std::to_string(timer.GetLifetime()) + ","
+                  "\"endOffset\": " + std::to_string(timer.GetMarginEnd()) + ","
+                  "\"strategyType\": 0,"
+                  "\"type\": " + std::to_string(MAGENTA_RECORDING_TYPE_CLOUD) + ","
+                  "\"pvrId\": \"" + mytimer.pvrId + "\","
+                  "\"beginTime\": \"" + mytimer.beginTime + "\","
+                  "\"endTime\": \"" + mytimer.endTime + "\","
+                  "\"programId\": \"" + std::to_string(timer.GetEPGUid()) + "\"}";
+  //      kodi::Log(ADDON_LOG_DEBUG, "PostData: %s", postData.c_str());
+      if (!JsonRequest(url, postData, doc)) {
+        return PVR_ERROR_SERVER_ERROR;
+      } else {
+        kodi::Log(ADDON_LOG_DEBUG, "Updated timer for PVRID: %s", mytimer.pvrId.c_str());
+        kodi::QueueNotification(QUEUE_INFO, "Aufnahme", "Aufnahme geändert");
+      }
+    }
   }
-  */
-  return PVR_ERROR_NOT_IMPLEMENTED;
+  else if (timer.GetTimerType() == TIMER_SERIES_EPG) {
+    for (const auto& mytimer : m_timerGroups)
+    {
+      if (timer.GetClientIndex() != mytimer.index)
+        continue;
+
+      MagentaChannel addonChannel;
+      if (!GetChannel(timer.GetClientChannelUid(), addonChannel))
+        return PVR_ERROR_FAILED;
+
+      url = m_epg_https_url + "PeriodPVRMgmt";
+      postData = GetPeriodPVRPayload(addonChannel, timer, mytimer.periodPVRTaskId, true);
+      if (!JsonRequest(url, postData, doc)) {
+        return PVR_ERROR_SERVER_ERROR;
+      } else {
+        kodi::Log(ADDON_LOG_DEBUG, "Updated series timer for periodPVRTaskId: %s", mytimer.periodPVRTaskId.c_str());
+        kodi::QueueNotification(QUEUE_INFO, "Aufnahme", "Serienaufnahme geändert");
+      }
+    }
+  }
+
+  kodi::addon::CInstancePVRClient::TriggerTimerUpdate();
+
+  return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR CPVRMagenta::DeleteTimer(const kodi::addon::PVRTimer& timer, bool)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-  for (const auto& thisTimer : m_timers)
+  if (timer.GetTimerType() == TIMER_ONCE_EPG)
   {
-    if (thisTimer.index == timer.GetClientIndex())
+    for (const auto& thisTimer : m_timers)
     {
-      return DeletePVR(thisTimer.pvrId, false);
+      if (thisTimer.index == timer.GetClientIndex())
+      {
+        return DeletePVR(thisTimer.pvrId, false);
+      }
+    }
+  } else if (timer.GetTimerType() == TIMER_SERIES_EPG) {
+    for (const auto& mytimer : m_timerGroups)
+    {
+      if (timer.GetClientIndex() != mytimer.index)
+        continue;
+
+      auto current_time = time(NULL);
+      std::string url = m_epg_https_url + "PeriodPVRMgmt";
+      std::string postData = "{\"action\": \"UPDATE\","
+                              "\"task\": {"
+                                          "\"overtime\": " + Utils::TimeToString(current_time) + ","
+                                          "\"periodPVRTaskId\": \"" + mytimer.periodPVRTaskId + "\"}}";
+      rapidjson::Document doc;
+      if (!JsonRequest(url, postData, doc)) {
+        return PVR_ERROR_SERVER_ERROR;
+      } else {
+        kodi::QueueNotification(QUEUE_INFO, "Timer", "Serientimer gelöscht");
+        kodi::addon::CInstancePVRClient::TriggerTimerUpdate();
+        return PVR_ERROR_NO_ERROR;
+      }
     }
   }
-return PVR_ERROR_FAILED;
-}
-/*
-PVR_ERROR CPVRMagenta::CallEPGMenuHook(const kodi::addon::PVRMenuhook& menuhook,
-                                    const kodi::addon::PVREPGTag& item)
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
-
-  return CallMenuHook(menuhook);
+  return PVR_ERROR_FAILED;
 }
 
-PVR_ERROR CPVRMagenta::CallChannelMenuHook(const kodi::addon::PVRMenuhook& menuhook,
-                                        const kodi::addon::PVRChannel& item)
-{
-  return CallMenuHook(menuhook);
-}
-
-PVR_ERROR CPVRMagenta::CallTimerMenuHook(const kodi::addon::PVRMenuhook& menuhook,
-                                      const kodi::addon::PVRTimer& item)
-{
-  return CallMenuHook(menuhook);
-}
-
-PVR_ERROR CPVRMagenta::CallRecordingMenuHook(const kodi::addon::PVRMenuhook& menuhook,
-                                          const kodi::addon::PVRRecording& item)
-{
-  return CallMenuHook(menuhook);
-}
-
-PVR_ERROR CPVRMagenta::CallSettingsMenuHook(const kodi::addon::PVRMenuhook& menuhook)
-{
-  return CallMenuHook(menuhook);
-}
-
-PVR_ERROR CPVRMagenta::CallMenuHook(const kodi::addon::PVRMenuhook& menuhook)
-{
-  int iMsg;
-  switch (menuhook.GetHookId())
-  {
-    case 1:
-      iMsg = 30010;
-      break;
-    case 2:
-      iMsg = 30011;
-      break;
-    case 3:
-      iMsg = 30012;
-      break;
-    case 4:
-      iMsg = 30012;
-      break;
-    default:
-      return PVR_ERROR_INVALID_PARAMETERS;
-  }
-  kodi::QueueNotification(QUEUE_INFO, "", kodi::addon::GetLocalizedString(iMsg));
-
-  return PVR_ERROR_NO_ERROR;
-}
-*/
-/*
-bool CPVRMagenta::SeekTime(double time, bool backward, double& startpts)
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  return true;
-}
-
-int64_t CPVRMagenta::SeekLiveStream(int64_t position, int whence)
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  return 0;
-}
-
-bool CPVRMagenta::OpenLiveStream(const kodi::addon::PVRChannel& channel)
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  return false;
-}
-
-void CPVRMagenta::CloseLiveStream()
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-}
-*/
-bool CPVRMagenta::GetChannel(const kodi::addon::PVRChannel& channel, MagentaChannel& myChannel)
+bool CPVRMagenta::GetChannel(const int& channelUid, MagentaChannel& myChannel)
 {
   for (const auto& thisChannel : m_channels)
   {
-    if (thisChannel.iUniqueId == (int)channel.GetUniqueId())
+    if (thisChannel.iUniqueId == (int)channelUid)
     {
       myChannel.bRadio = thisChannel.bRadio;
       myChannel.iUniqueId = thisChannel.iUniqueId;

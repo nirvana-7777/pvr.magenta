@@ -30,6 +30,7 @@ set(PVRMAGENTA_HEADERS
 )
 
 addon_version(pvr.magenta MAGENTA)
+add_definitions(-DMAGENTA_VERSION=${MAGENTA_VERSION})
 
 build_addon(pvr.magenta PVRMAGENTA DEPLIBS)
 
