@@ -1,5 +1,5 @@
 [![License: GPL-2.0-or-later](https://img.shields.io/badge/License-GPL%20v2+-blue.svg)](LICENSE.md)
-[![Build and run tests](https://github.com/nirvana-7777/pvr.magenta/actions/workflows/build.yml/badge.svg?branch=Nexus)](https://github.com/nirvana-7777/pvr.magenta/actions/workflows/build.yml)
+[![Build and run tests](https://github.com/nirvana-7777/pvr.magenta/actions/workflows/build.yml/badge.svg?branch=Omega)](https://github.com/nirvana-7777/pvr.magenta/actions/workflows/build.yml)
 
 # Magenta PVR client for Kodi
 This is a Magenta PVR client addon for Kodi. It provides Kodi integration for the streaming provider [Magenta TV](https://www.telekom.de/magenta-tv). A user account / paid subscription is required to use this addon. The content is geo-blocked and DRM protected. Therefore it requires inputstream adaptive in combination with widevine.
@@ -20,7 +20,7 @@ This is a Magenta PVR client addon for Kodi. It provides Kodi integration for th
 
 1. `git clone --branch master https://github.com/xbmc/xbmc.git`
 2. `mkdir -p xbmc/cmake/addons/addons/pvr.magenta/`
-3. `echo "pvr.magenta https://github.com/nirvana-7777/pvr.magenta Nexus" > xbmc/cmake/addons/addons/pvr.magenta/pvr.magenta.txt`
+3. `echo "pvr.magenta https://github.com/nirvana-7777/pvr.magenta Omega" > xbmc/cmake/addons/addons/pvr.magenta/pvr.magenta.txt`
 4. `echo "all" > xbmc/cmake/addons/addons/pvr.magenta/platforms.txt`
 5. `git clone https://github.com/nirvana-7777/pvr.magenta.git`
 6. `cd pvr.magenta && mkdir build && cd build`
