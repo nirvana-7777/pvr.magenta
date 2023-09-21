@@ -11,6 +11,9 @@
 #include <endian.h>
 #endif
 
+#if defined(__APPLE__) && defined(__MACH__)
+#include <machine/endian.h>
+#endif
 
 /// same as reset()
 SHA256::SHA256()
