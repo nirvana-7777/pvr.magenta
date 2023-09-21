@@ -9,10 +9,10 @@ This is a Magenta PVR client addon for Kodi. It provides Kodi integration for th
 - EPG
 - Recording Playback
 - Delete Recordings
-- Single timers add&delete
+- Single and series timers (add/update/delete)
 - Playtimeshift
 - Automatic replacement of devices when more than 5 OTT devices reached
-- Mapping to Kodi genres by Musiktoto. Thank you! 
+- Mapping to Kodi genres by Musiktoto. Thank you!
 
 ## Build instructions
 

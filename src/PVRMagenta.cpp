@@ -2548,6 +2548,9 @@ PVR_ERROR CPVRMagenta::DeleteTimer(const kodi::addon::PVRTimer& timer, bool)
       } else {
         kodi::QueueNotification(QUEUE_INFO, "Timer", "Serientimer gelöscht");
         kodi::addon::CInstancePVRClient::TriggerTimerUpdate();
+
+        //TODO: {"action":"DELETE","task":{"periodPVRTaskId":"xyz"}} if all recordings are deleted
+
         return PVR_ERROR_NO_ERROR;
       }
     }
