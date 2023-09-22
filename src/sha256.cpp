@@ -7,12 +7,12 @@
 #include "sha256.h"
 
 // big endian architectures need #define __BYTE_ORDER __BIG_ENDIAN
-#ifndef _MSC_VER
-#include <endian.h>
-#endif
-
-#if defined(__APPLE__) && defined(__MACH__)
+#ifndef _MSC_VER  // Later source code is defaulting to little endian
+#if defined(__APPLE__) && defined(__MACH__)  // Could also get rid of __MACH__, this code won't be compiled on Apple II
 #include <machine/endian.h>
+#else
+#include <endian.h>  // Linux, Android
+#endif
 #endif
 
 /// same as reset()
