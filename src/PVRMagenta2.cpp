@@ -373,6 +373,7 @@ bool CPVRMagenta2::DeviceManifest()
     GetParameter("LineAuthURL", m_lineAuthUrl);
     GetParameter("mpxLocationIdUri", m_locationIdUri);
     GetParameter("mpxBasicUrlAllChannelSchedulesFeed", m_allChannelSchedulesFeed);
+    GetParameter("widevineLicenseAcquisitionURL", m_widevineLicenseAcquisitionUrl);
   }
   const rapidjson::Value& sts = doc["sts"];
   m_sts.authorizeTokensUrl = Utils::JsonStringOrEmpty(sts, "authorizeTokensUrl");
@@ -973,9 +974,19 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
     kodi::Log(ADDON_LOG_DEBUG, "Licence Key: %s", lkey.c_str());
     properties.emplace_back(PVR_STREAM_PROPERTY_MIMETYPE, "application/xml+dash");
     properties.emplace_back(PVR_STREAM_PROPERTY_INPUTSTREAM, "inputstream.adaptive");
-    properties.emplace_back("inputstream.adaptive.license_key", lkey);
+    //properties.emplace_back("inputstream.adaptive.license_key", lkey);
+    std::string urlFirst;
+    std::string urlSecond;
+    if (lkey.length() > 1024) {
+        urlFirst = lkey.substr(0,1000);
+        urlSecond = lkey.substr(1000,std::string::npos);
+        kodi::Log(ADDON_LOG_DEBUG, "First %s", urlFirst.c_str());
+        kodi::Log(ADDON_LOG_DEBUG, "Second %s", urlSecond.c_str());
+        properties.emplace_back("inputstream.adaptive.license_url", urlFirst);
+        properties.emplace_back("inputstream.adaptive.license_url_append", urlSecond);
+    }
     properties.emplace_back("inputstream.adaptive.play_timeshift_buffer", playTimeshiftBuffer ? "true" : "false");
-    properties.emplace_back("inputstream.adaptive.manifest_type", "mpd");
+//    properties.emplace_back("inputstream.adaptive.manifest_type", "mpd");
     properties.emplace_back("inputstream.adaptive.license_type", "com.widevine.alpha");
   }
 
