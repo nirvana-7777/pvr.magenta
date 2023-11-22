@@ -348,6 +348,23 @@ bool CPVRMagenta::MagentaDTAuthenticate()
   m_userContentFilter = Utils::JsonStringOrEmpty(doc, "userContentFilter");
   m_userContentListFilter = Utils::JsonStringOrEmpty(doc, "userContentListFilter");
 
+  if (doc.HasMember("configurations")) {
+    const rapidjson::Value& configurations = doc["configurations"];
+    for (rapidjson::SizeType j = 0; j < configurations.Size(); j++)
+    {
+      if (configurations[j].HasMember("extensionInfo")) {
+        const rapidjson::Value& extensionInfo = configurations[j]["extensionInfo"];
+        for (rapidjson::SizeType i = 0; i < extensionInfo.Size(); i++)
+        {
+          if (Utils::JsonStringOrEmpty(extensionInfo[i], "key") == "ChannelCategoryID")
+          {
+            m_ChannelCategoryID = Utils::JsonStringOrEmpty(extensionInfo[i], "value");
+          }
+        }
+      }
+    }
+  }
+
   std::string key = MagentaParameters[m_params].pskValue + m_userID + m_encryptToken + m_cnonce;
   kodi::Log(ADDON_LOG_DEBUG, "Key: %s", key.c_str());
 
@@ -361,6 +378,7 @@ bool CPVRMagenta::MagentaDTAuthenticate()
 
 bool CPVRMagenta::MagentaAuthenticate()
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   if (!MagentaDTAuthenticate()) {
     int statusCode = 0;
     std::string url = m_sam_service_url + "/oauth2/tokens";
@@ -429,13 +447,14 @@ bool CPVRMagenta::MagentaAuthenticate()
 
 bool CPVRMagenta::GetCategories()
 {
+  m_categories.clear();
   std::string jsonString;
   int statusCode = 0;
 
   std::string url = m_epg_https_url + "CategoryList?userContentListFilter=" + m_userContentListFilter;
   std::string postData = "{\"offset\": 0, \"count\": 1000,"
 	                       "\"type\": \"VOD;AUDIO_VOD;VIDEO_VOD;CHANNEL;AUDIO_CHANNEL;VIDEO_CHANNEL;MIX;VAS;PROGRAM\","
-	                       "\"categoryid\": \"2000000142\"}";
+	                       "\"categoryid\": \"" + m_ChannelCategoryID + "\"}";
 
   jsonString = m_httpClient->HttpPost(url, postData, statusCode);
 
@@ -641,6 +660,7 @@ bool CPVRMagenta::GetGenreIds()
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
+  m_genres.clear();
   std::string url = m_epg_https_url + "GetGenreList";
   std::string postData = "{}";
 
@@ -714,6 +734,7 @@ bool CPVRMagenta::GetDeviceList()
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
+  m_devices.clear();
   std::string url = m_epg_https_url + "GetDeviceList";
   std::string postData = "{\"userid\": \"" + m_userID + "\","
 	                        "\"deviceType\": \"" + std::to_string(IPTV_STB) + ";" +
@@ -876,6 +897,12 @@ CPVRMagenta::CPVRMagenta() :
   m_settings->Load();
   m_httpClient = new HttpClient(m_settings);
 
+  m_isMagenta2 = m_settings->IsMagenta2();
+  if (m_isMagenta2) {
+    m_magenta2 = new CPVRMagenta2(m_settings, m_httpClient);
+    return;
+  }
+
   m_params = m_settings->GetTerminalType();
 
   srand(time(nullptr));
@@ -883,6 +910,7 @@ CPVRMagenta::CPVRMagenta() :
   m_userGroup = "-1";
   m_currentMediaId = -1;
   m_currentChannelId = -1;
+  m_ChannelCategoryID = DEFAULT_CATEGORY_ID;
 
   m_device_id = m_settings->GetMagentaDeviceID();
   if (m_device_id.empty()) {
@@ -914,14 +942,14 @@ CPVRMagenta::CPVRMagenta() :
   LoadChannels();
 }
 
-bool CPVRMagenta::AddGroupChannel(const long groupid, const int channelid)
+bool CPVRMagenta::AddGroupChannel(const long groupid, const unsigned int channelid)
 {
   for (auto& cgroup : m_categories)
   {
     if (cgroup.id != groupid)
       continue;
 
-    cgroup.channels.emplace_back(channelid);
+    cgroup.channelids.emplace_back(channelid);
     return true;
   }
   return false;
@@ -943,6 +971,7 @@ ADDON_STATUS CPVRMagenta::SetSetting(const std::string& settingName, const std::
 
 bool CPVRMagenta::LoadChannels()
 {
+  m_channels.clear();
   int pictureNo = m_settings->UseWhiteLogos() ? 15:14;
   kodi::Log(ADDON_LOG_DEBUG, "Load Magenta Channels");
   std::string url = m_epg_https_url + "AllChannel?userContentListFilter=" + m_userContentListFilter;
@@ -1036,13 +1065,10 @@ bool CPVRMagenta::LoadChannels()
     }
 
     if (channelItem.HasMember("categoryIds")) {
-      long categoryId;
       const rapidjson::Value& categories = channelItem["categoryIds"];
       for (rapidjson::SizeType i = 0; i < categories.Size(); i++)
       {
-        std::string cat = categories[i].GetString();
-        categoryId = stol(cat);
-        AddGroupChannel(categoryId, magenta_channel.iUniqueId);
+        AddGroupChannel(std::stol(categories[i].GetString()), magenta_channel.iUniqueId);
       }
     }
 
@@ -1179,6 +1205,10 @@ void CPVRMagenta::SetStreamProperties(std::vector<kodi::addon::PVRStreamProperty
 
 PVR_ERROR CPVRMagenta::GetCapabilities(kodi::addon::PVRCapabilities& capabilities)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetCapabilities(capabilities);
+
   capabilities.SetSupportsEPG(true);
   capabilities.SetSupportsEPGEdl(true);
   capabilities.SetSupportsTV(true);
@@ -1529,6 +1559,9 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
                                      kodi::addon::PVREPGTagsResultSet& results)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  if (m_isMagenta2)
+    return m_magenta2->GetEPGForChannel(channelUid, start, end, results);
 /*
   std::string url2 = "https://appepmfk10088.prod.sngtv.t-online.de:33227/EPG/JSON/GetDataVersion";
   int statusCode2 = 0;
@@ -1785,6 +1818,9 @@ PVR_ERROR CPVRMagenta::GetProviders(kodi::addon::PVRProvidersResultSet& results)
 PVR_ERROR CPVRMagenta::GetChannelsAmount(int& amount)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetChannelsAmount(amount);
+
   amount = m_channels.size();
   std::string amount_str = std::to_string(amount);
   kodi::Log(ADDON_LOG_DEBUG, "Channels Amount: [%s]", amount_str.c_str());
@@ -1794,6 +1830,9 @@ PVR_ERROR CPVRMagenta::GetChannelsAmount(int& amount)
 PVR_ERROR CPVRMagenta::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSet& results)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetChannels(bRadio, results);
+
   for (const auto& channel : m_channels)
   {
 
@@ -1819,6 +1858,10 @@ PVR_ERROR CPVRMagenta::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSe
 PVR_ERROR CPVRMagenta::GetChannelStreamProperties(
     const kodi::addon::PVRChannel& channel, std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetChannelStreamProperties(channel, properties);
+
   MagentaChannel addonChannel;
   if (!GetChannel(channel.GetUniqueId(), addonChannel))
     return PVR_ERROR_FAILED;
@@ -1867,18 +1910,19 @@ PVR_ERROR CPVRMagenta::GetChannelGroups(bool bRadio, kodi::addon::PVRChannelGrou
 PVR_ERROR CPVRMagenta::GetChannelGroupMembers(const kodi::addon::PVRChannelGroup& group,
                                            kodi::addon::PVRChannelGroupMembersResultSet& results)
 {
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   for (const auto& cgroup : m_categories)
   {
     if (cgroup.name != group.GetGroupName())
       continue;
 
-    int position = 0;
-    for (const auto& channel : cgroup.channels)
+    unsigned int position = 0;
+    for (const unsigned int& channelid : cgroup.channelids)
     {
       kodi::addon::PVRChannelGroupMember kodiGroupMember;
 
       kodiGroupMember.SetGroupName(group.GetGroupName());
-      kodiGroupMember.SetChannelUniqueId(channel);
+      kodiGroupMember.SetChannelUniqueId(channelid);
       kodiGroupMember.SetChannelNumber(++position);
 
       results.Add(kodiGroupMember);

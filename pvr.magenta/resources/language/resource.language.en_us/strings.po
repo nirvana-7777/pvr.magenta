@@ -147,3 +147,11 @@ msgstr ""
 msgctxt "#30054"
 msgid "Serial recording delete policy"
 msgstr ""
+
+msgctxt "#30055"
+msgid "Magenta 2.0"
+msgstr ""
+
+msgctxt "#30056"
+msgid "Personal Token"
+msgstr ""

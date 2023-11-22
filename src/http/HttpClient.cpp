@@ -2,6 +2,7 @@
 //#include "Cache.h"
 #include <random>
 //#include "../md5.h"
+#include "../Utils.h"
 #include <kodi/AddonBase.h>
 #include "../Settings.h"
 
@@ -21,12 +22,21 @@ HttpClient::HttpClient(ParameterDB *parameterDB):
 HttpClient::HttpClient(CSettings* settings):
   m_settings(settings)
 {
-
+  m_sessionId = "";
 }
 
 HttpClient::~HttpClient()
 {
 
+}
+
+void HttpClient::SetSessionId(const std::string& id) {
+  m_sessionId = id;
+}
+
+void HttpClient::SetDeviceToken(const std::string& token) {
+  m_deviceToken = token;
+  kodi::Log(ADDON_LOG_DEBUG, "Device Token set to: %s", token.c_str());
 }
 
 void HttpClient::ClearSession() {
@@ -105,14 +115,34 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
   Curl curl;
 
   curl.AddHeader("User-Agent", MAGENTA_USER_AGENT);
-  if (url.find("oauth2") != std::string::npos) {
+  if ((url.find("oauth2") != std::string::npos) || (url.find("/caas/atvlauncher/v1/token") != std::string::npos)) {
     curl.AddHeader("Content-Type", "application/x-www-form-urlencoded");
   } else {
     curl.AddHeader("Content-Type", "application/json");
   }
-  std::string csrftoken = m_settings->GetMagentaCSRFToken();
-  if (!csrftoken.empty()) {
-    curl.AddHeader("X_CSRFToken", csrftoken);
+
+  if (m_sessionId.empty())
+  {
+    //MagentaTV 1
+    std::string csrftoken = m_settings->GetMagentaCSRFToken();
+    if (!csrftoken.empty()) {
+      curl.AddHeader("X_CSRFToken", csrftoken);
+    }
+  } else
+  {
+    //MagentaTV 2.0
+    curl.AddHeader("Accept-Ranges", "none");
+    if ((url.find("license") != std::string::npos) || (url.find("link") != std::string::npos)) {
+      curl.AddHeader("Authorization", "Basic " + m_settings->GetMagenta2PersonalToken());
+    } else if (url.find("ssom") != std::string::npos) {
+      curl.AddHeader("session-id", m_sessionId);
+      curl.AddHeader("device-id", m_settings->GetMagentaDeviceID());
+    } else if (url.find("prod.dcm.telekom-dienste.de") != std::string::npos) {
+      curl.AddHeader("x-dt-session-id", m_sessionId);
+      curl.AddHeader("x-dt-call-id", Utils::CreateUUID());
+    } else if (url.find("cvss/IPTV2015%40ACC/vodclient") != std::string::npos) {
+      curl.AddHeader("x-device-authorization", "TAuth realm=\"device\",device_token=\"" + m_deviceToken + "\"");
+    }
   }
 
   std::string content = HttpRequestToCurl(curl, action, url, postData, statusCode);

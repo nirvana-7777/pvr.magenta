@@ -1,6 +1,8 @@
 //#ifndef SRC_HTTP_HTTPCLIENT_H_
 //#define SRC_HTTP_HTTPCLIENT_H_
 
+#pragma once
+
 #include "Curl.h"
 #include "../Settings.h"
 //#include "../sql/ParameterDB.h"
@@ -17,7 +19,9 @@ public:
   std::string HttpPost(const std::string& url, const std::string& postData, int &statusCode);
   void ClearSession();
   std::string GetUUID();
-   void SetStatusCodeHandler(HttpStatusCodeHandler* statusCodeHandler) {
+  void SetSessionId(const std::string& id);
+  void SetDeviceToken(const std::string& token);
+  void SetStatusCodeHandler(HttpStatusCodeHandler* statusCodeHandler) {
     m_statusCodeHandler = statusCodeHandler;
   }
 private:
@@ -27,6 +31,8 @@ private:
   std::string m_uuid;
   CSettings* m_settings;
   HttpStatusCodeHandler *m_statusCodeHandler = nullptr;
+  std::string m_sessionId;
+  std::string m_deviceToken;
 };
 
 //#endif /* SRC_HTTP_HTTPCLIENT_H_ */

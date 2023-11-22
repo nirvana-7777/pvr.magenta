@@ -52,6 +52,11 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="ismagentatwo" type="boolean" label="30055">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
         <setting id="customchannels" type="boolean" label="30023">
           <level>0</level>
           <default>true</default>
@@ -115,6 +120,14 @@
           <control type="edit" format="string" />
         </setting>
         <setting id="csrftoken" type="string" label="30014">
+          <level>4</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string" />
+        </setting>
+        <setting id="personaltoken" type="string" label="30056">
           <level>4</level>
           <default></default>
           <constraints>

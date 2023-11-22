@@ -12,6 +12,7 @@
 #include <kodi/addon-instance/PVR.h>
 #include "Settings.h"
 #include "http/HttpClient.h"
+#include "PVRMagenta2.h"
 #include "rapidjson/document.h"
 
 #define TIMER_ONCE_EPG (PVR_TIMER_TYPE_NONE + 1)
@@ -31,6 +32,7 @@ static const std::string TEMPLATENAME = "NGTV";
 static const std::string TIMEZONE = "Europe/Berlin";
 static const std::string DEVICENAME = "Kodi PVR";
 static const std::string EPGDIR = "/EPG/JSON/";
+static const std::string DEFAULT_CATEGORY_ID = "2000000142";
 static const int MAGENTA_BOOKMARK_RECORDING = 2;
 static const int MAGENTA_CAST_ACTOR = 0;
 static const int MAGENTA_CAST_DIRECTOR = 1;
@@ -233,11 +235,11 @@ struct MagentaRecordingGroup
 
 struct MagentaCategory
 {
-  int position;
+  unsigned int position;
   std::string name;
   long id;
   bool isRadio;
-  std::vector<int> channels;
+  std::vector<unsigned int> channelids;
 };
 
 struct PhysicalChannel
@@ -257,10 +259,10 @@ struct MagentaChannel
 
   bool bRadio;
 //  bool bArchive;
-  int iUniqueId;
+  unsigned int iUniqueId;
 //  int mediaId;
 //  int pvrMediaId;
-  int iChannelNumber; //position
+  unsigned int iChannelNumber; //position
   std::vector<PhysicalChannel> physicalChannels;
   std::string strChannelName;
   std::string strIconPath;
@@ -336,7 +338,7 @@ protected:
   bool GetChannel(const int& channelUid, MagentaChannel& myChannel);
 
 private:
-  PVR_ERROR CallMenuHook(const kodi::addon::PVRMenuhook& menuhook);
+//  PVR_ERROR CallMenuHook(const kodi::addon::PVRMenuhook& menuhook);
 
   void SetStreamProperties(std::vector<kodi::addon::PVRStreamProperty>& properties,
                            const std::string& url,
@@ -353,6 +355,7 @@ private:
 
   HttpClient *m_httpClient;
   CSettings* m_settings;
+  CPVRMagenta2* m_magenta2;
 
   bool JsonRequest(const std::string& url, const std::string& postData, rapidjson::Document& doc);
   std::string PrepareTime(const std::string& current);
@@ -373,7 +376,7 @@ private:
   bool GuestAuthenticate();
   bool MagentaDTAuthenticate();
   bool MagentaAuthenticate();
-  bool AddGroupChannel(const long groupid, const int channelid);
+  bool AddGroupChannel(const long groupid, const unsigned int channelid);
   bool ReleaseCurrentMedia();
   bool GetCategories();
   int GetGenreIdFromName(const std::string& genreName);
@@ -411,7 +414,9 @@ private:
   std::string m_userGroup;
   std::string m_sessionID;
   std::string m_session_key;
+  std::string m_ChannelCategoryID;
   int m_currentChannelId;
   int m_currentMediaId;
   int m_params;
+  bool m_isMagenta2;
 };
