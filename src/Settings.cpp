@@ -45,6 +45,13 @@ bool CSettings::Load()
     return false;
   }
 
+  if (!kodi::addon::CheckSettingString("personaltoken", m_personalToken))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'personaltoken' setting");
+    return false;
+  }
+
   if (!kodi::addon::CheckSettingString("deviceid", m_magentaDeviceID))
   {
     /* If setting is unknown fallback to defaults */
@@ -105,6 +112,13 @@ bool CSettings::Load()
   {
     /* If setting is unknown fallback to defaults */
     kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'enablegroups' setting");
+    return false;
+  }
+
+  if (!kodi::addon::CheckSettingBoolean("ismagentatwo", m_ismagenta2))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'ismagentatwo' setting");
     return false;
   }
 
@@ -192,6 +206,18 @@ ADDON_STATUS CSettings::SetSetting(const std::string& settingName,
     if (tmp_cToken != m_csrfToken)
     {
       kodi::addon::SetSettingString("csrftoken", m_csrfToken);
+  //      return ADDON_STATUS_NEED_RESTART;
+    }
+  }
+  else if (settingName == "personaltoken")
+  {
+    std::string tmp_pToken;
+    kodi::Log(ADDON_LOG_DEBUG, "Changed Setting 'personaltoken'");
+    tmp_pToken = m_personalToken;
+    m_personalToken = settingValue;
+    if (tmp_pToken != m_personalToken)
+    {
+      kodi::addon::SetSettingString("personaltoken", m_personalToken);
   //      return ADDON_STATUS_NEED_RESTART;
     }
   }

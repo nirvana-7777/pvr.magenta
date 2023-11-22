@@ -26,6 +26,7 @@ public:
   const std::string& GetMagentaTVToken() const { return m_tvToken; }
   const std::string& GetMagentaRefreshToken() const { return m_refreshToken; }
   const std::string& GetMagentaCSRFToken() const { return m_csrfToken; }
+  const std::string& GetMagenta2PersonalToken() const { return m_personalToken; }
   const std::string& GetMagentaDeviceID() const { return m_magentaDeviceID; }
   const int& GetStartNum() const { return m_start_num; }
   const bool HideUnsubscribed() const { return m_hideunsubscribed; }
@@ -35,6 +36,7 @@ public:
   const bool IsHiddenDeactivated() const { return m_deactivatehidden; }
   const bool PreferHigherResolution() const { return m_higherresolution; }
   const bool IsGroupsenabled() const  { return m_enablegroups; }
+  const bool IsMagenta2() const { return m_ismagenta2; }
 
 private:
   std::string m_epgToken;
@@ -42,6 +44,7 @@ private:
   std::string m_tvToken;
   std::string m_refreshToken;
   std::string m_csrfToken;
+  std::string m_personalToken;
   std::string m_magentaDeviceID;
   int m_start_num;
   int m_terminaltype;
@@ -54,4 +57,5 @@ private:
   bool m_deactivatehidden;
   bool m_higherresolution;
   bool m_enablegroups;
+  bool m_ismagenta2;
 };

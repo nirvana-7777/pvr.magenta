@@ -153,3 +153,11 @@ msgstr "Neueste 10 Episoden speichern"
 msgctxt "#30054"
 msgid "Serial recording delete policy"
 msgstr "Speicherdauer von Serienaufnahmen"
+
+msgctxt "#30055"
+msgid "Magenta 2.0"
+msgstr "Magenta TV 2.0"
+
+msgctxt "#30056"
+msgid "Personal Token"
+msgstr "Personal Token"
