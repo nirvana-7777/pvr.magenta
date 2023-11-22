@@ -29,5 +29,7 @@ v20.8.0
 - More EPG details (year, cast, imdb number, ...)
 - Serial recordings (add, update, delete)
 - Fix recording margins
-v20.8.1
+v21.8.0
+- Adapt for Omega
+v21.8.1
 - Init some variables
