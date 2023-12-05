@@ -141,7 +141,7 @@ std::string Utils::TimeToString2(const time_t time)
   char time_str[21] = "";
   std::tm* pstm = std::localtime(&time);
   // 2019-01-20T23:59:59
-  std::strftime(time_str, sizeof(time_str), "%Y-%m%-dT%H:%M:%SZ", pstm);
+  std::strftime(time_str, sizeof(time_str), "%Y-%m-%dT%H:%M:%SZ", pstm);
   return time_str;
 }
 
@@ -174,6 +174,15 @@ int Utils::JsonIntOrZero(const rapidjson::Value& jsonValue, const char* fieldNam
     return 0;
   }
   return jsonValue[fieldName].GetInt();
+}
+
+int64_t Utils::JsonInt64OrZero(const rapidjson::Value& jsonValue, const char* fieldName)
+{
+  if (!jsonValue.HasMember(fieldName) || !jsonValue[fieldName].IsInt64())
+  {
+    return 0;
+  }
+  return jsonValue[fieldName].GetInt64();
 }
 
 bool Utils::JsonBoolOrFalse(const rapidjson::Value& jsonValue, const char* fieldName)

@@ -1412,8 +1412,12 @@ bool CPVRMagenta::FillEPGTag(const rapidjson::Value& epgItem, kodi::addon::PVREP
 
   if (id.empty() || channelid.empty() || name.empty() || epgstart.empty() || epgend.empty())
     return false;
-  tag.SetUniqueBroadcastId(std::stoi(id));
-  tag.SetUniqueChannelId(std::stoi(channelid));
+  try {
+    tag.SetUniqueBroadcastId(std::stoi(id));
+  } catch (const std::exception& e) {}
+  try {
+    tag.SetUniqueChannelId(std::stoi(channelid));
+  } catch (const std::exception& e) {}
   tag.SetTitle(name);
 //      kodi::Log(ADDON_LOG_DEBUG, "EPG Name %s", tag.GetTitle().c_str());
   tag.SetPlot(Utils::JsonStringOrEmpty(epgItem,"introduce"));
@@ -1446,16 +1450,22 @@ bool CPVRMagenta::FillEPGTag(const rapidjson::Value& epgItem, kodi::addon::PVREP
   }
   std::string season = Utils::JsonStringOrEmpty(epgItem, "seasonNum");
   if (season != "") {
-    tag.SetSeriesNumber(std::stoi(season));
+    try {
+      tag.SetSeriesNumber(std::stoi(season));
+    } catch (const std::exception& e) {}
   }
   std::string episode = Utils::JsonStringOrEmpty(epgItem, "subNum");
   if (episode != "") {
-    tag.SetEpisodeNumber(std::stoi(episode));
+    try {
+      tag.SetEpisodeNumber(std::stoi(episode));
+    } catch (const std::exception& e) {}
     epg_tag_flags += EPG_TAG_FLAG_IS_SERIES;
   }
   std::string rating = Utils::JsonStringOrEmpty(epgItem, "ratingid");
   if (rating != "-1") {
+    try {
       tag.SetParentalRating(std::stoi(rating));
+    } catch (const std::exception& e) {}
   }
   if (epgItem.HasMember("casts")) {
     const rapidjson::Value& casts = epgItem["casts"];
@@ -1517,7 +1527,9 @@ bool CPVRMagenta::FillEPGTag(const rapidjson::Value& epgItem, kodi::addon::PVREP
   if (epgItem.HasMember("producedate"))
   {
     std::string producedate = Utils::JsonStringOrEmpty(epgItem, "producedate");
-    tag.SetYear(std::stoi(producedate.substr(0,4)));
+    try {
+      tag.SetYear(std::stoi(producedate.substr(0,4)));
+    } catch (const std::exception& e) {}
 //    kodi::Log(ADDON_LOG_DEBUG, "Produce Date %s Sub %s Setting Year to %i", producedate.c_str(), producedate.substr(0,4).c_str(), std::stoi(producedate.substr(0,4)));
   }
   if (epgItem.HasMember("episodeInformation")) {
@@ -1591,11 +1603,13 @@ PVR_ERROR CPVRMagenta::GetEPGForChannel(int channelUid,
   const rapidjson::Value& epgitems = epgDoc["playbilllist"];
 
   kodi::Log(ADDON_LOG_DEBUG, "[epg] iterate entries");
-  for (rapidjson::Value::ConstValueIterator itr1 = epgitems.Begin();
-        itr1 != epgitems.End(); ++itr1)
+  for (rapidjson::SizeType i = 0; i < epgitems.Size(); i++)
+//  for (rapidjson::Value::ConstValueIterator itr1 = epgitems.Begin();
+//        itr1 != epgitems.End(); ++itr1)
   {
     kodi::addon::PVREPGTag tag;
-    if (FillEPGTag((*itr1), tag))
+//    if (FillEPGTag((*itr1), tag))
+    if (FillEPGTag(epgitems[i], tag))
       results.Add(tag);
   }
   return PVR_ERROR_NO_ERROR;

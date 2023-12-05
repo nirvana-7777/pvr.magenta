@@ -1,0 +1,9 @@
+{
+  "genres": [
+    {
+      "primaryGenre": "Sport",
+      "genreType": 4,
+      "secondaryGenres":[{"secondaryGenre": "Sport", "genreSubType": 0}]
+    }
+  ]
+}

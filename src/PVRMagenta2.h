@@ -28,10 +28,18 @@ static const int MAX_CHANNEL_ENTRIES = 100;
 
 static const std::vector<std::string> Magenta2StationThumbnailTypes
                   = { "stationBackground", "stationBarker", "stationLogo", "stationLogoColored" };
-
+/*
 static const int FEED_ALL_CHANNELS = 0;
 static const int FEED_ENTITLED_CHANNELS = 1;
 static const int FEED_CHANNEL_SCHEDULE = 2;
+*/
+struct Magenta2Genre
+{
+  std::string primaryGenre;
+  int genreType;
+  std::string secondaryGenre;
+  int genreSubType;
+};
 
 struct Magenta2Lock
 {
@@ -82,8 +90,8 @@ struct Magenta2Channel
   bool bRadio;
   std::string id;
   std::string stationsId;
-  unsigned int iUniqueId;
-  unsigned int iChannelNumber; //position
+  int iUniqueId;
+  int iChannelNumber; //position
   std::string title;
   std::string strChannelName;
   std::string strIconPath;
@@ -100,6 +108,8 @@ class CPVRMagenta2
 public:
   CPVRMagenta2(CSettings* settings, HttpClient* httpclient);
   ~CPVRMagenta2();
+
+  typedef void (CPVRMagenta2::*handleentry_t)(const rapidjson::Value& entry);
 
   PVR_ERROR GetCapabilities(kodi::addon::PVRCapabilities& capabilities);
   PVR_ERROR GetChannelsAmount(int& amount);
@@ -120,6 +130,7 @@ private:
   std::vector<Magenta2Channel> m_channels;
   std::vector<std::string> m_distributionRights;
   std::vector<Magenta2KV> m_parameters;
+  std::vector<Magenta2Genre> m_genres;
 
   HttpClient* m_httpClient;
   CSettings* m_settings;
@@ -128,6 +139,7 @@ private:
                               const std::string& strTag,
                               std::string& strStringValue);
 
+  bool GetMyGenres();
   bool GetPostJson(const std::string& url, const std::string& body, rapidjson::Document& doc);
   bool GetSmil(const std::string& url, tinyxml2::XMLDocument& smilDoc);
   bool GetStreamParameters(const std::string& url, std::string& src, std::string& releasePid);
@@ -136,11 +148,13 @@ private:
   bool DeviceManifest();
   bool Manifest();
   bool GetDistributionRights();
+  std::string GetNgissUrl(const std::string& url, const int& width, const int& height);
   void AddChannelEntry(const rapidjson::Value& entry);
   void AddEntitlementEntry(const rapidjson::Value& entry);
-  bool GetFeed(const int& feed, const int& maxEntries, const std::string& params/*, kodi::addon::PVREPGTagsResultSet& results*/);
-//  bool GetAllChannels();
-//  bool GetEntitledChannels();
+  bool GetFeed(/*const int& feed,*/ const int& maxEntries, /*const std::string& params,*/ std::string& baseUrl/*, kodi::addon::PVREPGTagsResultSet& results*/,
+                handleentry_t HandleEntry);
+  void AddEPGEntry(const int& channelNumber, const rapidjson::Value& entry, kodi::addon::PVREPGTagsResultSet& results);
+  bool GetEPGFeed(const int& channelNumber, const std::string& baseUrl, kodi::addon::PVREPGTagsResultSet& results);
   bool GetChannelByNumber(const unsigned int number, Magenta2Channel& myChannel);
   bool AddDistributionRight(const unsigned int number, const std::string& right);
 //  bool IsChannelNumberExist(const unsigned int number);

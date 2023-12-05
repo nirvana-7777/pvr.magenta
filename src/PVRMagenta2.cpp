@@ -18,6 +18,7 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
 #include <tinyxml2.h>
+#include <kodi/Filesystem.h>
 
 void tokenize2(std::string const &str, const char* delim,
             std::vector<std::string> &out)
@@ -66,6 +67,50 @@ bool CPVRMagenta2::XMLGetString(const tinyxml2::XMLNode* pRootNode,
   }
   strStringValue.clear();
   return false;
+}
+
+bool CPVRMagenta2::GetMyGenres()
+{
+  std::string content;
+  kodi::vfs::CFile myFile;
+  std::string file = kodi::addon::GetAddonPath() + "mygenres2.json";
+  kodi::Log(ADDON_LOG_DEBUG, "Opening mygenres: %s", file.c_str());
+  if (myFile.OpenFile(file))
+  {
+    char buffer[1024];
+    while (int bytesRead = myFile.Read(buffer, 1024))
+      content.append(buffer, bytesRead);
+  } else {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to open mygenres.json");
+    return false;
+  }
+
+  rapidjson::Document doc;
+  doc.Parse(content.c_str());
+  if (doc.GetParseError() || !doc.HasMember("genres"))
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to GetMyGenres");
+    return false;
+  }
+  const rapidjson::Value& genres = doc["genres"];
+
+  for (rapidjson::SizeType i = 0; i < genres.Size(); i++)
+  {
+    std::string primaryGenre = Utils::JsonStringOrEmpty(genres[i], "primaryGenre");
+    int genreType = Utils::JsonIntOrZero(genres[i], "genreType");
+    if (genres[i].HasMember("secondaryGenres"))
+    {
+      const rapidjson::Value& secondaryGenres = genres[i]["secondaryGenres"];
+      for (rapidjson::SizeType j = 0; j < secondaryGenres.Size(); j++)
+      {
+        std::string secondaryGenre = Utils::JsonStringOrEmpty(secondaryGenres[j], "secondaryGenre");
+        int genreSubType = Utils::JsonIntOrZero(secondaryGenres[j], "genreSubType");
+        kodi::Log(ADDON_LOG_DEBUG, "Added genre: %s %i %s %i", primaryGenre.c_str(), genreType, secondaryGenre.c_str(), genreSubType);
+      }
+    }
+  }
+
+  return true;
 }
 
 bool CPVRMagenta2::GetAuthMethods()
@@ -137,7 +182,7 @@ bool CPVRMagenta2::GetPostJson(const std::string& url, const std::string& body, 
   //  kodi::Log(ADDON_LOG_DEBUG, "Body: %s", body.c_str());
     result = m_httpClient->HttpPost(url, body, statusCode);
   }
-
+//  kodi::Log(ADDON_LOG_DEBUG, "Result: %s", result.c_str());
   doc.Parse(result.c_str());
   if (statusCode == 206)
   {
@@ -372,7 +417,9 @@ bool CPVRMagenta2::DeviceManifest()
     GetParameter("mpxBasicUrlGetApplicableDistributionRights", m_basicUrlGetApplicableDistributionRights);
     GetParameter("LineAuthURL", m_lineAuthUrl);
     GetParameter("mpxLocationIdUri", m_locationIdUri);
+    GetParameter("mpxAccountPid", m_accountPid);
     GetParameter("mpxBasicUrlAllChannelSchedulesFeed", m_allChannelSchedulesFeed);
+    GetParameter("mpxAllProgramsFeedUrl", m_allProgramsFeedUrl);
     GetParameter("widevineLicenseAcquisitionURL", m_widevineLicenseAcquisitionUrl);
   }
   const rapidjson::Value& sts = doc["sts"];
@@ -494,8 +541,8 @@ void CPVRMagenta2::AddChannelEntry(const rapidjson::Value& entry)
         }
       }
     }
-    m_channels.emplace_back(channel);
-    kodi::Log(ADDON_LOG_DEBUG, "Added channel: %s station: %s", channel.strChannelName.c_str(), channel.stationsId.c_str());
+    CPVRMagenta2::m_channels.emplace_back(channel);
+    kodi::Log(ADDON_LOG_DEBUG, "Added channel: %u %s station: %s", channel.iUniqueId, channel.strChannelName.c_str(), channel.stationsId.c_str());
   }
 }
 
@@ -509,40 +556,10 @@ void CPVRMagenta2::AddEntitlementEntry(const rapidjson::Value& entry)
   }
 }
 
-bool CPVRMagenta2::GetFeed(const int& feed, const int& maxEntries, const std::string& params/*, kodi::addon::PVREPGTagsResultSet& results*/)
+bool CPVRMagenta2::GetFeed(/*const int& feed,*/ const int& maxEntries, /*const std::string& params,*/ std::string& baseUrl/*, kodi::addon::PVREPGTagsResultSet& results*/,
+        handleentry_t HandleEntry)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  std::string baseUrl;
-  switch (feed) {
-    case FEED_ALL_CHANNELS:
-      m_channels.clear();
-      if (m_allChannelStationsFeed.empty())
-      {
-        if (!GetParameter("mpxDefaultUrlAllChannelStationsFeed", m_allChannelStationsFeed))
-          return false;
-      } else {
-        replace(m_allChannelStationsFeed, "{MpxAccountPid}", m_accountPid);
-      }
-      baseUrl = m_allChannelStationsFeed + params;
-      break;
-    case FEED_ENTITLED_CHANNELS:
-      replace(m_entitledChannelsFeed, "{MpxAccountPid}", m_accountPid);
-      baseUrl = m_entitledChannelsFeed + params;
-      for (const auto& right : m_distributionRights)
-      {
-        if (baseUrl != m_entitledChannelsFeed + "?byDistributionRightId=")
-          baseUrl += "%7C"; // "|"
-        baseUrl += Utils::UrlEncode(right);
-      }
-      break;
-    case FEED_CHANNEL_SCHEDULE:
-      baseUrl = m_allChannelSchedulesFeed + params;
-      break;
-    default:
-      kodi::Log(ADDON_LOG_DEBUG, "Unknown Feed Type: %i", feed);
-      return false;
-  }
 
   int startIndex = 1;
   int endIndex = maxEntries;
@@ -577,7 +594,8 @@ bool CPVRMagenta2::GetFeed(const int& feed, const int& maxEntries, const std::st
     const rapidjson::Value& entries = doc["entries"];
     for (rapidjson::SizeType i = 0; i < entries.Size(); i++)
     {
-
+      (this->*HandleEntry)(entries[i]);
+/*
       switch (feed) {
         case FEED_ALL_CHANNELS:
           AddChannelEntry(entries[i]);
@@ -593,152 +611,13 @@ bool CPVRMagenta2::GetFeed(const int& feed, const int& maxEntries, const std::st
           }
           break;
       }
-    }
-  }
-
-  return true;
-}
-/*
-bool CPVRMagenta2::GetAllChannels()
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  m_channels.clear();
-
-  if (m_allChannelStationsFeed.empty())
-  {
-    std::string url;
-    if (!GetParameter("mpxDefaultUrlAllChannelStationsFeed", m_allChannelStationsFeed))
-      return false;
-  } else {
-    replace(m_allChannelStationsFeed, "{MpxAccountPid}", m_accountPid);
-  }
-
-  int startIndex = 1;
-  int endIndex = MAX_CHANNEL_ENTRIES;
-  bool nextRequest = true;
-
-  std::string url;
-  rapidjson::Document doc;
-
-  while (nextRequest) {
-    url = m_allChannelStationsFeed + "?lang=short-de&range=" + std::to_string(startIndex) + "-" + std::to_string(endIndex);
-
-    if (!GetPostJson(url, "", doc)) {
-      return false;
-    }
-
-    if (!doc.HasMember("entries"))
-    {
-      kodi::Log(ADDON_LOG_ERROR, "Failed to get all channels");
-      return false;
-    }
-    int entryCount = Utils::JsonIntOrZero(doc, "entryCount");
-    if (entryCount < MAX_CHANNEL_ENTRIES)
-      nextRequest = false;
-    else {
-      startIndex += entryCount;
-      endIndex += entryCount;
-    }
-    const rapidjson::Value& entries = doc["entries"];
-    for (rapidjson::SizeType i = 0; i < entries.Size(); i++)
-    {
-      Magenta2Channel channel;
-      channel.iUniqueId = Utils::JsonIntOrZero(entries[i], "channelNumber");
-      channel.title = Utils::JsonStringOrEmpty(entries[i], "title");
-      channel.id = Utils::JsonStringOrEmpty(entries[i], "id");
-      channel.iChannelNumber = Utils::JsonIntOrZero(entries[i], "dt$displayChannelNumber");
-//      channel.isEntitled = false;
-      channel.isHidden = false;
-      channel.bRadio = false;
-      const rapidjson::Value& stations = entries[i]["stations"];
-      for (rapidjson::Value::ConstMemberIterator itr = stations.MemberBegin(); itr != stations.MemberEnd(); ++itr)
-      {
-        const rapidjson::Value& stationItem = (itr->value);
-        channel.stationsId = Utils::JsonStringOrEmpty(stationItem, "id");
-        channel.strChannelName = Utils::JsonStringOrEmpty(stationItem, "title");
-        channel.isHd = Utils::JsonBoolOrFalse(stationItem, "isHd");
-        const rapidjson::Value& mediaPids = stationItem["era$mediaPids"];
-        channel.mediaPath = Utils::JsonStringOrEmpty(mediaPids, "urn:theplatform:tv:location:any");
-        if (stationItem.HasMember("thumbnails"))
-        {
-          const rapidjson::Value& thumbnails = stationItem["thumbnails"];
-          for (int i=0; i<Magenta2StationThumbnailTypes.size(); i++)
-          {
-            if (thumbnails.HasMember(Magenta2StationThumbnailTypes[i].c_str()))
-            {
-              const rapidjson::Value& thumbnail = thumbnails[Magenta2StationThumbnailTypes[i].c_str()];
-              Magenta2Picture picture;
-              picture.title = Utils::JsonStringOrEmpty(thumbnail, "title");
-              picture.url = Utils::JsonStringOrEmpty(thumbnail, "url");
-              picture.width = Utils::JsonIntOrZero(thumbnail, "width");
-              picture.height = Utils::JsonIntOrZero(thumbnail, "height");
-              channel.thumbnails.emplace_back(picture);
-            }
-          }
-        }
-        m_channels.emplace_back(channel);
-        kodi::Log(ADDON_LOG_DEBUG, "Added channel: %s station: %s", channel.strChannelName.c_str(), channel.stationsId.c_str());
-      }
-    }
-  }
-
-  return true;
-}
-
-bool CPVRMagenta2::GetEntitledChannels()
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  replace(m_entitledChannelsFeed, "{MpxAccountPid}", m_accountPid);
-  int startIndex = 1;
-  int endIndex = MAX_CHANNEL_ENTRIES;
-  bool nextRequest = true;
-
-  std::string url;
-  std::string baseUrl = m_entitledChannelsFeed + "?byDistributionRightId=";
-  rapidjson::Document doc;
-
-  for (const auto& right : m_distributionRights)
-  {
-    if (baseUrl != m_entitledChannelsFeed + "?byDistributionRightId=")
-      baseUrl += "%7C"; // "|"
-    baseUrl += Utils::UrlEncode(right);
-  }
-
-  while (nextRequest) {
-    url = baseUrl + "&range=" + std::to_string(startIndex) + "-" + std::to_string(endIndex);
-
-    if (!GetPostJson(url, "", doc)) {
-      return false;
-    }
-
-    if (!doc.HasMember("entries"))
-    {
-      kodi::Log(ADDON_LOG_ERROR, "Failed to get entitled channels");
-      return false;
-    }
-    if (Utils::JsonIntOrZero(doc, "entryCount") < MAX_CHANNEL_ENTRIES)
-      nextRequest = false;
-    else {
-      startIndex += MAX_CHANNEL_ENTRIES;
-      endIndex += MAX_CHANNEL_ENTRIES;
-    }
-    const rapidjson::Value& entries = doc["entries"];
-    for (rapidjson::SizeType i = 0; i < entries.Size(); i++)
-    {
-      const rapidjson::Value& rights = entries[i]["distributionRightIds"];
-      unsigned int channelNumber = Utils::JsonIntOrZero(entries[i], "dt$channelNumber");
-      for (rapidjson::SizeType i = 0; i < rights.Size(); i++)
-      {
-        AddDistributionRight(channelNumber, rights[i].GetString());
-      }
-  //    SetIsEntitledByNumber(channelNumber);
-    }
-  }
-  return true;
-}
 */
+    }
+  }
+
+  return true;
+}
+
 CPVRMagenta2::CPVRMagenta2(CSettings* settings, HttpClient* httpclient):
   m_settings(settings),
   m_httpClient(httpclient)
@@ -770,17 +649,37 @@ CPVRMagenta2::CPVRMagenta2(CSettings* settings, HttpClient* httpclient):
     return;
   }
 
-  //kodi::addon::PVREPGTagsResultSet nullResults;
+  m_channels.clear();
+  if (m_allChannelStationsFeed.empty())
+  {
+    if (!GetParameter("mpxDefaultUrlAllChannelStationsFeed", m_allChannelStationsFeed))
+      return;
+  } else {
+    replace(m_allChannelStationsFeed, "{MpxAccountPid}", m_accountPid);
+  }
+  std::string baseUrl = m_allChannelStationsFeed + "?lang=short-de";
 
-  GetFeed(FEED_ALL_CHANNELS, MAX_CHANNEL_ENTRIES, "?lang=short-de"/*, nullptr*/);
+  GetFeed(/*FEED_ALL_CHANNELS,*/ MAX_CHANNEL_ENTRIES, baseUrl/*, nullptr*/, &CPVRMagenta2::AddChannelEntry);
   GetDistributionRights();
-  GetFeed(FEED_ENTITLED_CHANNELS, MAX_CHANNEL_ENTRIES, "?byDistributionRightId="/*, nullptr*/);
+
+  replace(m_entitledChannelsFeed, "{MpxAccountPid}", m_accountPid);
+  baseUrl = m_entitledChannelsFeed + "?byDistributionRightId=";
+  for (const auto& right : m_distributionRights)
+  {
+    if (baseUrl != m_entitledChannelsFeed + "?byDistributionRightId=")
+      baseUrl += "%7C"; // "|"
+    baseUrl += Utils::UrlEncode(right);
+  }
+  GetFeed(/*FEED_ENTITLED_CHANNELS,*/ MAX_CHANNEL_ENTRIES, baseUrl/*, nullptr*/, &CPVRMagenta2::AddEntitlementEntry);
   HideDuplicateChannels();
+  replace(m_allChannelSchedulesFeed, "{{MpxAccountPid}}", m_accountPid);
+  replace(m_allProgramsFeedUrl, "{{MpxAccountPid}}", m_accountPid);
+  GetMyGenres();
 }
 
 CPVRMagenta2::~CPVRMagenta2()
 {
-//  m_channels.clear();
+  m_channels.clear();
 }
 
 PVR_ERROR CPVRMagenta2::GetCapabilities(kodi::addon::PVRCapabilities& capabilities)
@@ -882,7 +781,11 @@ bool CPVRMagenta2::GetStreamParameters(const std::string& url, std::string& src,
       if ((name == "isException") && (value == "true"))
         isException = true;
       if (name == "responseCode")
-        responseCode = std::stoi(value);
+      {
+        try {
+          responseCode = std::stoi(value);
+        } catch (const std::exception& e) {}
+      }
       pParm = pParm->NextSiblingElement();
     }
     if (isException)
@@ -1004,6 +907,15 @@ PVR_ERROR CPVRMagenta2::GetChannelsAmount(int& amount)
   return PVR_ERROR_NO_ERROR;
 }
 
+std::string CPVRMagenta2::GetNgissUrl(const std::string& url, const int& width, const int& height)
+{
+  return m_ngiss.basicUrl + "iss/?" +
+         m_ngiss.callParameter + "&ar=keep" +
+         "&src=" + Utils::UrlEncode(url) +
+         "&x=" + std::to_string(width) +
+         "&y=" + std::to_string(height);
+}
+
 PVR_ERROR CPVRMagenta2::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSet& results)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
@@ -1015,9 +927,9 @@ PVR_ERROR CPVRMagenta2::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultS
     {
       kodi::addon::PVRChannel kodiChannel;
 
-      kodiChannel.SetUniqueId(channel.iUniqueId);
+      kodiChannel.SetUniqueId(static_cast<unsigned int>(channel.iUniqueId));
       kodiChannel.SetIsRadio(channel.bRadio);
-      kodiChannel.SetChannelNumber(channel.iChannelNumber);
+      kodiChannel.SetChannelNumber(static_cast<unsigned int>(channel.iChannelNumber));
       kodiChannel.SetChannelName(channel.strChannelName);
 
       int pictureNo = 0;
@@ -1027,11 +939,9 @@ PVR_ERROR CPVRMagenta2::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultS
             (!m_settings->UseWhiteLogos() && channel.thumbnails[i].title == "stationLogoColored.png"))
           pictureNo = i;
       }
-      std::string iconUrl = m_ngiss.basicUrl + "iss/?" +
-                            m_ngiss.callParameter + "&ar=keep" +
-                            "&src=" + Utils::UrlEncode(channel.thumbnails[pictureNo].url) +
-                            "&x=" + std::to_string(channel.thumbnails[pictureNo].width) +
-                            "&y=" + std::to_string(channel.thumbnails[pictureNo].height);
+      std::string iconUrl = GetNgissUrl(channel.thumbnails[pictureNo].url,
+                                        channel.thumbnails[pictureNo].width,
+                                        channel.thumbnails[pictureNo].height);
 //      kodi::Log(ADDON_LOG_DEBUG, "Icon Url: %s", iconUrl.c_str());
       kodiChannel.SetIconPath(iconUrl);
       kodiChannel.SetIsHidden(channel.isHidden);
@@ -1064,6 +974,235 @@ PVR_ERROR CPVRMagenta2::GetChannelStreamProperties(
   return PVR_ERROR_FAILED;
 }
 
+void CPVRMagenta2::AddEPGEntry(const int& channelNumber, const rapidjson::Value& epgItem, kodi::addon::PVREPGTagsResultSet& results)
+{
+  kodi::addon::PVREPGTag tag;
+
+  unsigned int epg_tag_flags = EPG_TAG_FLAG_UNDEFINED;
+  int guid;
+  try {
+    guid = stoi(Utils::JsonStringOrEmpty(epgItem, "guid").substr(11, std::string::npos), 0, 16);
+  }
+  catch (const std::exception& e) {
+    return;
+  }
+  tag.SetUniqueBroadcastId(static_cast<unsigned int>(guid));
+  tag.SetUniqueChannelId(static_cast<unsigned int>(channelNumber));
+  tag.SetTitle(Utils::JsonStringOrEmpty(epgItem, "title"));
+  tag.SetPlot(Utils::JsonStringOrEmpty(epgItem, "description"));
+  tag.SetPlotOutline(Utils::JsonStringOrEmpty(epgItem, "shortDescription"));
+
+  if (epgItem.HasMember("thumbnails"))
+  {
+    const rapidjson::Value& thumbnails = epgItem["thumbnails"];
+    rapidjson::Value::ConstMemberIterator itr = thumbnails.MemberBegin();
+    ++itr;
+    if (itr != thumbnails.MemberEnd())
+    {
+      const rapidjson::Value& thumbnailsItem = (itr->value);
+
+      int width = Utils::JsonIntOrZero(thumbnailsItem, "width");
+      int height = Utils::JsonIntOrZero(thumbnailsItem, "height");
+      if ((width == 0) && (height == 0))
+        tag.SetIconPath(Utils::JsonStringOrEmpty(thumbnailsItem, "url"));
+      else
+        tag.SetIconPath(GetNgissUrl(Utils::JsonStringOrEmpty(thumbnailsItem, "url"), width, height));
+    }
+  }
+
+  int seasonNum = Utils::JsonIntOrZero(epgItem, "tvSeasonNumber");
+  if (seasonNum != 0)
+  {
+    tag.SetSeriesNumber(seasonNum);
+    epg_tag_flags += EPG_TAG_FLAG_IS_SERIES;
+  }
+  int episodeNum = Utils::JsonIntOrZero(epgItem, "tvSeasonEpisodeNumber");
+  if (episodeNum != 0)
+    tag.SetEpisodeNumber(episodeNum);
+  tag.SetYear(Utils::JsonIntOrZero(epgItem, "year"));
+  tag.SetEpisodeName(Utils::JsonStringOrEmpty(epgItem, "secondaryTitle"));
+  std::string seriesId = Utils::JsonStringOrEmpty(epgItem, "seriesId");
+  if (!seriesId.empty())
+    tag.SetSeriesLink(seriesId);
+
+  if (epgItem.HasMember("ratings") && epgItem["ratings"].GetType() != 0)
+  {
+    const rapidjson::Value& ratings = epgItem["ratings"];
+    if (ratings.Size() > 0) {
+      std::string ratingStr = Utils::JsonStringOrEmpty(ratings[0], "rating");
+      int rating = 0;
+      try {
+        rating = stoi(ratingStr);
+      } catch (const std::exception& e) {}
+      if (rating > 0)
+        tag.SetParentalRating(rating);
+    }
+  }
+
+  if (epgItem.HasMember("dt$originalIds") && epgItem["dt$originalIds"].GetType() != 0)
+  {
+    const rapidjson::Value& originalIds = epgItem["dt$originalIds"];
+    std::string imdbNumber = Utils::JsonStringOrEmpty(originalIds, "imdb");
+    if (!imdbNumber.empty())
+      tag.SetIMDBNumber(imdbNumber);
+  }
+
+  if (epgItem.HasMember("credits")) {
+    const rapidjson::Value& credits = epgItem["credits"];
+    std::string cast = "";
+    std::string director = "";
+    std::string writer = "";
+    for (rapidjson::SizeType i = 0; i < credits.Size(); i++)
+    {
+      std::string creditType = Utils::JsonStringOrEmpty(credits[i], "creditType");
+      if (creditType == "DIRECTOR")
+      {
+        if (director != "")
+          director += EPG_STRING_TOKEN_SEPARATOR;
+        director += Utils::JsonStringOrEmpty(credits[i], "personName");
+      } else if (creditType == "SCRIPTWRITER")
+      {
+        if (writer != "")
+          writer += EPG_STRING_TOKEN_SEPARATOR;
+        writer += Utils::JsonStringOrEmpty(credits[i], "personName");
+      } else if ((creditType == "ACTOR") || (creditType == "AD6"))
+      {
+        if (cast != "")
+          cast += EPG_STRING_TOKEN_SEPARATOR;
+        cast += Utils::JsonStringOrEmpty(credits[i], "personName");
+      } else if (creditType == "PRODUCER")
+      {
+
+      } else
+      {
+        kodi::Log(ADDON_LOG_DEBUG, "Unknown Credit Type: %s Person Name: %s", creditType.c_str(), Utils::JsonStringOrEmpty(credits[i], "personName").c_str());
+      }
+    }
+    tag.SetCast(cast);
+    tag.SetDirector(director);
+    tag.SetWriter(writer);
+  }
+/*
+  std::string programType = Utils::JsonStringOrEmpty(epgItem, "programType");
+  if ((programType != "episode") && (programType != "movie"))
+    kodi::Log(ADDON_LOG_DEBUG, "Unknown program type %s", programType.c_str());
+*/
+  std::string genre_primary = "";
+  std::string genre_secondary = "";
+  if (epgItem.HasMember("tags")) {
+    const rapidjson::Value& tags = epgItem["tags"];
+    for (rapidjson::SizeType i = 0; i < tags.Size(); i++)
+    {
+      std::string scheme = Utils::JsonStringOrEmpty(tags[i], "scheme");
+      std::string title = Utils::JsonStringOrEmpty(tags[i], "title");
+      if (scheme == "genre-primary")
+      {
+        genre_primary += title;
+        genre_primary += EPG_STRING_TOKEN_SEPARATOR;
+      } else if (scheme == "genre-secondary")
+      {
+        if (title != genre_primary)
+        {
+          genre_secondary += title;
+          genre_secondary += EPG_STRING_TOKEN_SEPARATOR;          
+        }
+      } else if (scheme == "category")
+      {
+        //Todo for later
+      } else
+      {
+        kodi::Log(ADDON_LOG_DEBUG, "Unknown scheme type: %s with title: %s", scheme.c_str(), title.c_str());
+      }
+    }
+    genre_primary.erase(genre_primary.end() - 1);
+    genre_secondary.erase(genre_secondary.end() - 1);
+    kodi::Log(ADDON_LOG_DEBUG, "Primary Genres: %s", genre_primary.c_str());
+    kodi::Log(ADDON_LOG_DEBUG, "Secondary Genres: %s", genre_secondary.c_str());
+  }
+
+  tag.SetFlags(epg_tag_flags);
+
+  if (epgItem.HasMember("listings") && epgItem["listings"].GetType() != 0) {
+    const rapidjson::Value& listings = epgItem["listings"];
+    for (rapidjson::SizeType i = 0; i < listings.Size(); i++) {
+      tag.SetStartTime((time_t) (Utils::JsonInt64OrZero(listings[i], "startTime") / 1000));
+      tag.SetEndTime((time_t) (Utils::JsonInt64OrZero(listings[i], "endTime") / 1000));
+      results.Add(tag);
+    }
+  }
+}
+
+bool CPVRMagenta2::GetEPGFeed(const int& channelNumber, const std::string& baseUrl, kodi::addon::PVREPGTagsResultSet& results)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  rapidjson::Document doc;
+  if (!GetPostJson(baseUrl, "", doc)) {
+    return false;
+  }
+
+  if (!doc.HasMember("entries"))
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to get EPG feed");
+    return false;
+  }
+
+  std::string guids = "";
+  int entryCount = 0;
+  const rapidjson::Value& entries = doc["entries"];
+  for (rapidjson::SizeType i = 0; i < entries.Size(); i++)
+  {
+    if (!entries[i].HasMember("listings"))
+    {
+      kodi::Log(ADDON_LOG_ERROR, "Failed to get EPG listings");
+      return false;
+    }
+    const rapidjson::Value& listings = entries[i]["listings"];
+    for (rapidjson::SizeType j = 0; j < listings.Size(); j++)
+    {
+  //    AddEPGEntry(channelNumber, listings[j], results);
+      if (listings[j].HasMember("program") && listings[j]["program"].GetType() != 0) {
+        const rapidjson::Value& program = listings[j]["program"];
+        guids += Utils::JsonStringOrEmpty(program, "guid") + "|";
+        entryCount++;
+      }
+      if ((entryCount == 300) || (j == listings.Size()-1))
+      {
+        guids.erase(guids.end() - 1);
+      //  kodi::Log(ADDON_LOG_DEBUG, "Guids found %s", guids.c_str());
+
+        std::string programsUrl = m_allProgramsFeedUrl + "?form=cjson" +
+                                                         "&byGuid=" + Utils::UrlEncode(guids) +
+                                                         "&range=1-" + std::to_string(entryCount) +
+                                                         "&fields=guid,title,description,listings.startTime,"
+                                                         "listings.endTime,thumbnails,tvSeasonNumber,tvSeasonEpisodeNumber,"
+                                                         "year,secondaryTitle,seriesId,ratings,dt$originalIds,"
+                                                         "credits.creditType,credits.personName,shortDescription,tags"; //programType
+
+        rapidjson::Document doc2;
+        if (!GetPostJson(programsUrl, "", doc2)) {
+          return false;
+        }
+
+        if (!doc2.HasMember("entries"))
+        {
+          kodi::Log(ADDON_LOG_ERROR, "Failed to get Programs feed");
+          return false;
+        }
+
+        const rapidjson::Value& entries2 = doc2["entries"];
+        for (rapidjson::SizeType k = 0; k < entries2.Size(); k++)
+        {
+          AddEPGEntry(channelNumber, entries2[k], results);
+        }
+        guids = "";
+        entryCount = 0;
+      }
+    }
+  }
+  return true;
+}
+
 PVR_ERROR CPVRMagenta2::GetEPGForChannel(int channelUid,
                                          time_t start,
                                          time_t end,
@@ -1071,17 +1210,14 @@ PVR_ERROR CPVRMagenta2::GetEPGForChannel(int channelUid,
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
-  std::string startTime = Utils::TimeToString2(start);
-  std::string endTime = Utils::TimeToString2(end);
-
   kodi::Log(ADDON_LOG_DEBUG, "Start %u End %u", start, end);
-  kodi::Log(ADDON_LOG_DEBUG, "EPG Request for channel %i from %s to %s", channelUid, startTime.c_str(), endTime.c_str());
+//  kodi::Log(ADDON_LOG_DEBUG, "EPG Request for channel %i from %s to %s", channelUid, startTime.c_str(), endTime.c_str());
 
-  std::string params = "?form=cjson&byLocationId=" + Utils::UrlEncode(m_locationIdUri) +
-                       "&byListingTime=" + Utils::UrlEncode(startTime + "~" + endTime) +
-                       "&byChannelNumber=" + std::to_string(channelUid);
-
-//  GetFeed(FEED_CHANNEL_SCHEDULE, 0, params, results);
-
+  std::string baseUrl = m_allChannelSchedulesFeed + "?form=cjson&byLocationId=" + Utils::UrlEncode(m_locationIdUri) +
+                                                    "&byListingTime=" + Utils::UrlEncode(Utils::TimeToString2(start) + "~" + Utils::TimeToString2(end)) +
+                                                    "&byChannelNumber=" + std::to_string(channelUid) +
+                                                    "&range=1-1" +
+                                                    "&fields=listings.program.guid";
+  GetEPGFeed(channelUid, baseUrl, results);
   return PVR_ERROR_NO_ERROR;
 }
