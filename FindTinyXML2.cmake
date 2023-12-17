@@ -14,14 +14,16 @@ endif()
 find_path(TINYXML2_INCLUDE_DIR tinyxml2.h PATHS ${PC_TINYXML2_INCLUDEDIR})
 find_library(TINYXML2_LIBRARY NAMES tinyxml2 PATHS ${PC_TINYXML2_LIBDIR})
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(TinyXML2
-                                  REQUIRED_VARS TINYXML2_LIBRARY TINYXML2_INCLUDE_DIR
-                                  VERSION_VAR ${PC_TINYXML2_VERSION})
+#include(FindPackageHandleStandardArgs)
+#find_package_handle_standard_args(TinyXML2
+#                                  REQUIRED_VARS TINYXML2_LIBRARY TINYXML2_INCLUDE_DIR
+#                                  VERSION_VAR ${PC_TINYXML2_VERSION})
 
-if(TINYXML2_FOUND)
-  set(TINYXML2_INCLUDE_DIRS ${TINYXML2_INCLUDE_DIR})
-  set(TINYXML2_LIBRARIES ${TINYXML2_LIBRARY})
-endif()
+#if(TINYXML2_FOUND)
+#  set(TINYXML2_INCLUDE_DIRS ${TINYXML2_INCLUDE_DIR})
+#  set(TINYXML2_LIBRARIES ${TINYXML2_LIBRARY})
+#endif()
+set(TINYXML2_INCLUDE_DIRS ${ADDON_DEPENDS_PATH}/include)
+set(TINYXML2_LIBRARIES ${ADDON_DEPENDS_PATH}/lib)
 
 mark_as_advanced(TINYXML2_INCLUDE_DIR TINYXML2_LIBRARY)

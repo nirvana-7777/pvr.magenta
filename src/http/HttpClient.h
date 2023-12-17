@@ -13,7 +13,7 @@ class HttpClient
 public:
   HttpClient(CSettings* settings);
   ~HttpClient();
-//  std::string HttpGetCached(const std::string& url, time_t cacheDuration, int &statusCode);
+  std::string HttpGetCached(const std::string& url, time_t cacheDuration, int &statusCode);
   std::string HttpGet(const std::string& url, int &statusCode);
   std::string HttpDelete(const std::string& url, int &statusCode);
   std::string HttpPost(const std::string& url, const std::string& postData, int &statusCode);
@@ -24,6 +24,10 @@ public:
   void SetStatusCodeHandler(HttpStatusCodeHandler* statusCodeHandler) {
     m_statusCodeHandler = statusCodeHandler;
   }
+  std::string GetEffectiveUrl() {
+    return m_effectiveUrl;
+  }
+
 private:
   std::string HttpRequest(const std::string& action, const std::string& url, const std::string& postData, int &statusCode);
   std::string HttpRequestToCurl(Curl &curl, const std::string& action, const std::string& url, const std::string& postData, int &statusCode);
@@ -33,6 +37,7 @@ private:
   HttpStatusCodeHandler *m_statusCodeHandler = nullptr;
   std::string m_sessionId;
   std::string m_deviceToken;
+  std::string m_effectiveUrl;
 };
 
 //#endif /* SRC_HTTP_HTTPCLIENT_H_ */

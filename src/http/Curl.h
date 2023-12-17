@@ -17,6 +17,9 @@ public:
   std::string GetLocation() {
     return m_location;
   }
+  std::string GetEffectiveUrl() {
+    return m_effectiveUrl;
+  }
 
 private:
   std::string Request(const std::string& action, const std::string& url,
@@ -27,4 +30,5 @@ private:
   std::map<std::string, std::string> m_options;
   std::map<std::string, std::string> m_cookies;
   std::string m_location;
+  std::string m_effectiveUrl;
 };

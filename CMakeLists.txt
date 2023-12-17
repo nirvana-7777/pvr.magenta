@@ -15,8 +15,11 @@ include_directories(${KODI_INCLUDE_DIR}/.. # Hack way with "/..", need bigger Ko
 set(DEPLIBS ${TINYXML2_LIBRARIES})
 
 set(PVRMAGENTA_SOURCES
+  src/md5.cpp
   src/http/Curl.cpp
+  src/http/Cache.cpp
   src/http/HttpClient.cpp
+  src/sam3/Sam3Client.cpp
   src/Utils.cpp
   src/sha256.cpp
   src/Base64.cpp
@@ -26,8 +29,11 @@ set(PVRMAGENTA_SOURCES
 )
 
 set(PVRMAGENTA_HEADERS
+  src/md5.h
   src/http/Curl.h
+  src/http/Cache.h
   src/http/HttpClient.h
+  src/sam3/Sam3Client.h
   src/Utils.h
   src/sha256.h
   src/hmac.h

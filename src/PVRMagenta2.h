@@ -11,11 +11,13 @@
 #include <kodi/addon-instance/PVR.h>
 #include "Settings.h"
 #include "http/HttpClient.h"
+#include "sam3/Sam3Client.h"
 #include "rapidjson/document.h"
 #include <tinyxml2.h>
 
 static const std::string BOOTSTRAP_URL = "https://prod.dcm.telekom-dienste.de/v1/settings/{configGroupId}/bootstrap?";
-static const std::string SSO_URL = "https://ssom.magentatv.de/authenticate";
+static const std::string WINDOWS_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+//static const std::string SSO_URL = "https://ssom.magentatv.de/authenticate";
 //static const std::string CONFIG_GROUP_ID = "web-mtv";
 static const std::string CONFIG_GROUP_ID = "atv-androidtv";
 static const std::string DEVICEMODEL = "DT:ATV-AndroidTV";
@@ -33,11 +35,18 @@ static const int FEED_ALL_CHANNELS = 0;
 static const int FEED_ENTITLED_CHANNELS = 1;
 static const int FEED_CHANNEL_SCHEDULE = 2;
 */
+
+struct Magenta2SubGenre
+{
+  std::string secondaryGenre;
+  int secondaryGenreType;
+};
+
 struct Magenta2Genre
 {
   std::string primaryGenre;
   int genreType;
-  std::string secondaryGenre;
+  std::vector<Magenta2SubGenre> secondaryGenres;
   int genreSubType;
 };
 
@@ -134,6 +143,7 @@ private:
 
   HttpClient* m_httpClient;
   CSettings* m_settings;
+  Sam3Client* m_sam3Client;
 
   bool XMLGetString(const tinyxml2::XMLNode* pRootNode,
                               const std::string& strTag,
@@ -153,16 +163,16 @@ private:
   void AddEntitlementEntry(const rapidjson::Value& entry);
   bool GetFeed(/*const int& feed,*/ const int& maxEntries, /*const std::string& params,*/ std::string& baseUrl/*, kodi::addon::PVREPGTagsResultSet& results*/,
                 handleentry_t HandleEntry);
+  bool GetGenre(int& primaryType, int& secondaryType, const std::string& primaryGenre, const std::string& secondaryGenre);
   void AddEPGEntry(const int& channelNumber, const rapidjson::Value& entry, kodi::addon::PVREPGTagsResultSet& results);
   bool GetEPGFeed(const int& channelNumber, const std::string& baseUrl, kodi::addon::PVREPGTagsResultSet& results);
   bool GetChannelByNumber(const unsigned int number, Magenta2Channel& myChannel);
   bool AddDistributionRight(const unsigned int number, const std::string& right);
 //  bool IsChannelNumberExist(const unsigned int number);
   bool HideDuplicateChannels();
-  bool SingleSignOn();
+//  bool SingleSignOn();
   bool ReleaseLock();
   bool GetAuthMethods();
-  bool LineAuth();
 
   std::string m_deviceId;
   std::string m_sessionId;
@@ -172,7 +182,7 @@ private:
   std::string m_accountBaseUrl;
   std::string m_deviceTokensUrl;
   std::string m_lineAuthUrl;
-  std::string m_sam3ClientId;
+//  std::string m_sam3ClientId;
   std::string m_entitledChannelsFeed;
   std::string m_allChannelSchedulesFeed;
   std::string m_allChannelStationsFeed;

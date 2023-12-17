@@ -28,6 +28,8 @@ public:
   const std::string& GetMagentaCSRFToken() const { return m_csrfToken; }
   const std::string& GetMagenta2PersonalToken() const { return m_personalToken; }
   const std::string& GetMagentaDeviceID() const { return m_magentaDeviceID; }
+  const std::string& GetMagentaUsername() const { return m_userName; }
+  const std::string& GetMagentaPassword() const { return m_password; }
   const int& GetStartNum() const { return m_start_num; }
   const bool HideUnsubscribed() const { return m_hideunsubscribed; }
   const bool UseCustomChannels() const { return m_usecustomchannels; }
@@ -46,6 +48,8 @@ private:
   std::string m_csrfToken;
   std::string m_personalToken;
   std::string m_magentaDeviceID;
+  std::string m_userName;
+  std::string m_password;
   int m_start_num;
   int m_terminaltype;
   int m_deletemode;

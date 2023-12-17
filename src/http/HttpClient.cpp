@@ -1,7 +1,7 @@
 #include "HttpClient.h"
-//#include "Cache.h"
+#include "Cache.h"
 #include <random>
-//#include "../md5.h"
+#include "../md5.h"
 #include "../Utils.h"
 #include <kodi/AddonBase.h>
 #include "../Settings.h"
@@ -9,16 +9,9 @@
 static const std::string MAGENTA_USER_AGENT = std::string("Kodi/")
     + std::string(STR(KODI_VERSION)) + std::string(" pvr.magenta/")
     + std::string(STR(MAGENTA_VERSION));
-/*
-HttpClient::HttpClient(ParameterDB *parameterDB):
-  m_parameterDB(parameterDB)
-{
-  kodi::Log(ADDON_LOG_INFO, "Using useragent: %s", USER_AGENT.c_str());
 
-  m_uuid = m_parameterDB->Get("uuid");
-  m_zattooSession = m_parameterDB->Get("zattooSession");
-}
-*/
+static const std::string SSO_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 HttpClient::HttpClient(CSettings* settings):
   m_settings(settings)
 {
@@ -41,7 +34,6 @@ void HttpClient::SetDeviceToken(const std::string& token) {
 
 void HttpClient::ClearSession() {
   m_uuid = GetUUID();
-//  m_beakerSessionId = "";
 }
 
 std::string HttpClient::GetUUID()
@@ -52,7 +44,6 @@ std::string HttpClient::GetUUID()
   }
 
   m_uuid = GenerateUUID();
-//  m_parameterDB->Set("uuid", m_uuid);
   return m_uuid;
 }
 
@@ -74,7 +65,7 @@ std::string HttpClient::GenerateUUID()
 
     return tmp_s;
 }
-/*
+
 std::string HttpClient::HttpGetCached(const std::string& url, time_t cacheDuration, int &statusCode)
 {
 
@@ -94,7 +85,7 @@ std::string HttpClient::HttpGetCached(const std::string& url, time_t cacheDurati
   }
   return content;
 }
-*/
+
 std::string HttpClient::HttpGet(const std::string& url, int &statusCode)
 {
   return HttpRequest("GET", url, "", statusCode);
@@ -114,8 +105,11 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
 {
   Curl curl;
 
-  curl.AddHeader("User-Agent", MAGENTA_USER_AGENT);
-  if ((url.find("oauth2") != std::string::npos) || (url.find("/caas/atvlauncher/v1/token") != std::string::npos)) {
+  if (url.find("ssom") != std::string::npos)
+    curl.AddHeader("User-Agent", SSO_USER_AGENT);
+  else
+    curl.AddHeader("User-Agent", MAGENTA_USER_AGENT);
+  if ((url.find("oauth2") != std::string::npos) || (url.find("factorx") != std::string::npos) || (url.find("/caas/atvlauncher/v1/token") != std::string::npos)) {
     curl.AddHeader("Content-Type", "application/x-www-form-urlencoded");
   } else {
     curl.AddHeader("Content-Type", "application/json");
@@ -135,6 +129,8 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
     if ((url.find("license") != std::string::npos) || (url.find("link") != std::string::npos)) {
       curl.AddHeader("Authorization", "Basic " + m_settings->GetMagenta2PersonalToken());
     } else if (url.find("ssom") != std::string::npos) {
+      curl.AddHeader("origin", "https://web2.magentatv.de");
+      curl.AddHeader("referer", "https://web2.magentatv.de/");
       curl.AddHeader("session-id", m_sessionId);
       curl.AddHeader("device-id", m_settings->GetMagentaDeviceID());
     } else if (url.find("prod.dcm.telekom-dienste.de") != std::string::npos) {
@@ -142,6 +138,8 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
       curl.AddHeader("x-dt-call-id", Utils::CreateUUID());
     } else if (url.find("cvss/IPTV2015%40ACC/vodclient") != std::string::npos) {
       curl.AddHeader("x-device-authorization", "TAuth realm=\"device\",device_token=\"" + m_deviceToken + "\"");
+    } else if (url.find("oauth2/auth?") != std::string::npos) {
+      curl.AddHeader("referer", "https://web2.magentatv.de/");
     }
   }
 
@@ -174,6 +172,7 @@ std::string HttpClient::HttpRequestToCurl(Curl &curl, const std::string& action,
   {
     content = curl.Get(url, statusCode);
   }
+  m_effectiveUrl = curl.GetEffectiveUrl();
   return content;
 
 }

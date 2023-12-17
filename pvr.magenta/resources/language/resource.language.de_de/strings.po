@@ -29,13 +29,13 @@ msgid "Inofficial Addon - Use on own risk"
 msgstr "Inoffizielles Addon - Benutzung auf eigene Gefahr"
 
 #. Setting to set used stream username
-#: pvr.hrti/resources/settings.xml
+#: pvr.magenta/resources/settings.xml
 msgctxt "#30000"
 msgid "Username"
 msgstr "Benutzername"
 
 #. Setting to set used stream password
-#: pvr.hrti/resources/settings.xml
+#: pvr.magenta/resources/settings.xml
 msgctxt "#30001"
 msgid "Password"
 msgstr "Passwort"
@@ -159,5 +159,13 @@ msgid "Magenta 2.0"
 msgstr "Magenta TV 2.0"
 
 msgctxt "#30056"
-msgid "Personal Token"
-msgstr "Personal Token"
+msgid "Persona Token"
+msgstr "Personatoken"
+
+msgctxt "#30057"
+msgid "Credentials"
+msgstr "Zugangsdaten"
+
+msgctxt "#30058"
+msgid "Username / Password"
+msgstr "Benutzername / Passwort"

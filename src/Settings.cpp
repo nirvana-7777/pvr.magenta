@@ -10,6 +10,20 @@
 
 bool CSettings::Load()
 {
+  if (!kodi::addon::CheckSettingString("username", m_userName))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'username' setting");
+    return false;
+  }
+
+  if (!kodi::addon::CheckSettingString("password", m_password))
+  {
+    /* If setting is unknown fallback to defaults */
+    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'password' setting");
+    return false;
+  }
+
   if (!kodi::addon::CheckSettingString("epg_token", m_epgToken))
   {
     /* If setting is unknown fallback to defaults */

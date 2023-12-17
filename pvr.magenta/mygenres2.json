@@ -2,8 +2,52 @@
   "genres": [
     {
       "primaryGenre": "Sport",
-      "genreType": 4,
-      "secondaryGenres":[{"secondaryGenre": "Sport", "genreSubType": 0}]
+      "genreType": 64,
+      "genreSubType": 0,
+      "secondaryGenres": [
+        {
+          "secondaryGenre": "Fußball",
+          "genreSubType": 3
+        }
+      ]
+    },
+    {
+      "primaryGenre": "Fußball",
+      "genreType": 64,
+      "genreSubType": 3
+    },
+    {
+      "primaryGenre": "Krimi",
+      "genreType": 16,
+      "genreSubType": 1
+    },
+    {
+      "primaryGenre": "Kinder",
+      "genreType": 80,
+      "secondaryGenres": [
+        {
+          "secondaryGenre": "Kinder",
+          "genreSubType": 0
+        },
+        {
+          "secondaryGenre": "Animation",
+          "genreSubType": 5
+        }
+      ]
+    },
+    {
+      "primaryGenre": "Nachrichten",
+      "genreType": 32,
+      "secondaryGenres": [
+        {
+          "secondaryGenre": "Nachrichten",
+          "genreSubType": 0
+        },
+        {
+          "secondaryGenre": "Magazin",
+          "genreSubType": 2
+        }
+      ]
     }
   ]
 }

@@ -17,12 +17,12 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 msgctxt "Addon Summary"
-msgid "Hrti PVR Client"
-msgstr "Hrti PVR Client"
+msgid "Magenta PVR Client"
+msgstr "Magenta PVR Client"
 
 msgctxt "Addon Description"
-msgid "PVR Client for HRTi platform which allows you to watch live HRT TV channels and listening HRT radio stations."
-msgstr "PVR Client for HRTi platform which allows you to watch live HRT TV channels and listening HRT radio stations."
+msgid "PVR Client for Magenta platform which allows you to watch live Magenta TV channels."
+msgstr "PVR Client for Magenta platform which allows you to watch live Magenta TV channels."
 
 msgctxt "Addon Disclaimer"
 msgid "Inofficial Addon - Use on own risk"
@@ -153,5 +153,13 @@ msgid "Magenta 2.0"
 msgstr ""
 
 msgctxt "#30056"
-msgid "Personal Token"
+msgid "Persona Token"
+msgstr ""
+
+msgctxt "#30057"
+msgid "Credentials"
+msgstr ""
+
+msgctxt "#30058"
+msgid "Username / Password"
 msgstr ""

@@ -96,18 +96,26 @@ bool CPVRMagenta2::GetMyGenres()
 
   for (rapidjson::SizeType i = 0; i < genres.Size(); i++)
   {
-    std::string primaryGenre = Utils::JsonStringOrEmpty(genres[i], "primaryGenre");
-    int genreType = Utils::JsonIntOrZero(genres[i], "genreType");
+    Magenta2Genre genre;
+    genre.primaryGenre = Utils::JsonStringOrEmpty(genres[i], "primaryGenre");
+    genre.genreType = Utils::JsonIntOrZero(genres[i], "genreType");
+    if (genres[i].HasMember("genreSubType"))
+      genre.genreSubType = Utils::JsonIntOrZero(genres[i], "genreSubType");
+    else
+      genre.genreSubType = -1;
     if (genres[i].HasMember("secondaryGenres"))
     {
       const rapidjson::Value& secondaryGenres = genres[i]["secondaryGenres"];
       for (rapidjson::SizeType j = 0; j < secondaryGenres.Size(); j++)
       {
-        std::string secondaryGenre = Utils::JsonStringOrEmpty(secondaryGenres[j], "secondaryGenre");
-        int genreSubType = Utils::JsonIntOrZero(secondaryGenres[j], "genreSubType");
-        kodi::Log(ADDON_LOG_DEBUG, "Added genre: %s %i %s %i", primaryGenre.c_str(), genreType, secondaryGenre.c_str(), genreSubType);
+        Magenta2SubGenre subGenre;
+        subGenre.secondaryGenre = Utils::JsonStringOrEmpty(secondaryGenres[j], "secondaryGenre");
+        subGenre.secondaryGenreType = Utils::JsonIntOrZero(secondaryGenres[j], "genreSubType");
+        genre.secondaryGenres.emplace_back(subGenre);
       }
     }
+    m_genres.emplace_back(genre);
+    kodi::Log(ADDON_LOG_DEBUG, "Added genre: %s %i %i", genre.primaryGenre.c_str(), genre.genreType, genre.genreSubType);
   }
 
   return true;
@@ -149,34 +157,21 @@ bool CPVRMagenta2::GetAuthMethods()
   return true;
 }
 
-bool CPVRMagenta2::LineAuth()
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  if (m_sts.authorizeTokensUrl.empty() || m_sts.deviceToken.empty())
-    return false;
-
-  std::string url = m_sts.authorizeTokensUrl;
-  std::string body = "grant_type=" + Utils::UrlEncode("urn:com:telekom:ott-app-services:access-auth") +
-                     "&client_id=" + m_sam3ClientId +
-                     "&token=" + m_sts.deviceToken +
-                     "&scope=tvhubs offline_acces";
-  rapidjson::Document doc;
-  if (!GetPostJson(url, body, doc)) {
-    return false;
-  }
-
-
-  return true;
-}
-
 bool CPVRMagenta2::GetPostJson(const std::string& url, const std::string& body, rapidjson::Document& doc)
 {
   int statusCode = 0;
   std::string result;
 
   if (body.empty()) {
-    result = m_httpClient->HttpGet(url, statusCode);
+    if (url.find(BOOTSTRAP_URL) != std::string::npos)// ||
+//        (url.find(m_deviceTokensUrl) != std::string::npos) ||
+//        (url.find(m_manifestBaseUrl) != std::string::npos))
+      result = m_httpClient->HttpGetCached(url, 60 * 60 * 24 * 10, statusCode);
+    else if (url.find(m_allChannelStationsFeed) != std::string::npos) //||
+//             (url.find(m_entitledChannelsFeed) != std::string::npos))
+      result = m_httpClient->HttpGetCached(url, 60 * 60 * 24 * 3, statusCode);
+    else
+      result = m_httpClient->HttpGet(url, statusCode);
   } else
   {
   //  kodi::Log(ADDON_LOG_DEBUG, "Body: %s", body.c_str());
@@ -203,7 +198,10 @@ bool CPVRMagenta2::GetPostJson(const std::string& url, const std::string& body, 
       if (m_authMethods.line)
       {
         kodi::Log(ADDON_LOG_DEBUG, "LineAuth");
-        LineAuth();
+//        LineAuth();
+      }
+      if (m_sam3Client->Sam3Login()) {
+        kodi::Log(ADDON_LOG_DEBUG, "Reauth successful");
       }
       //SingleSignOn();
     }
@@ -212,7 +210,7 @@ bool CPVRMagenta2::GetPostJson(const std::string& url, const std::string& body, 
       kodi::Log(ADDON_LOG_DEBUG, "Get Json for %s answered response code: %i and title %s",
                                           url.c_str(),
                                           Utils::JsonIntOrZero(doc, "responseCode"),
-                                          Utils::JsonStringOrEmpty(doc, "title"));
+                                          Utils::JsonStringOrEmpty(doc, "title").c_str());
     }
     return false;
   }
@@ -276,39 +274,6 @@ bool CPVRMagenta2::GetChannelByNumber(const unsigned int number, Magenta2Channel
   return false;
 }
 
-bool CPVRMagenta2::SingleSignOn()
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  std::string url = SSO_URL;
-  std::string body = "{\"checkRefreshToken\": true}";
-
-  rapidjson::Document doc;
-  if (!GetPostJson(url, body, doc)) {
-    return false;
-  }
-
-  if (!doc.HasMember("userInfo"))
-  {
-    kodi::Log(ADDON_LOG_ERROR, "Failed to authenticate");
-    return false;
-  }
-
-  const rapidjson::Value& userInfo = doc["userInfo"];
-  m_userId = Utils::JsonStringOrEmpty(userInfo, "userId");
-  m_accountId = Utils::JsonStringOrEmpty(userInfo, "accountId");
-  m_displayName = Utils::JsonStringOrEmpty(userInfo, "displayName");
-  std::string personaToken = Utils::JsonStringOrEmpty(userInfo, "personaToken");
-  kodi::Log(ADDON_LOG_DEBUG, "UserID: %s, AccountID: %s", m_userId.c_str(), m_accountId.c_str());
-  if (!personaToken.empty())
-  {
-    kodi::Log(ADDON_LOG_DEBUG, "New personaToken: %s", personaToken.c_str());
-    m_settings->SetSetting("personaltoken", personaToken);
-  }
-
-  return true;
-}
-
 bool CPVRMagenta2::HideDuplicateChannels()
 {
   for (auto it = m_channels.begin(); it!=m_channels.end(); ++it)
@@ -317,7 +282,14 @@ bool CPVRMagenta2::HideDuplicateChannels()
     {
       if ((*it).iChannelNumber == (*it2).iChannelNumber)
       {
-        (*it2).isHidden = true;
+        if ((*it).isHd)
+        {
+          (*it2).isHidden = true;
+          kodi::Log(ADDON_LOG_DEBUG, "Hiding %s %i %i", (*it2).strChannelName.c_str(), (*it2).iChannelNumber, (*it2).iUniqueId);
+        } else {
+          (*it).isHidden = true;
+          kodi::Log(ADDON_LOG_DEBUG, "Hiding %s %i %i", (*it).strChannelName.c_str(), (*it).iChannelNumber, (*it).iUniqueId);
+        }
       }
     }
   }
@@ -348,9 +320,10 @@ bool CPVRMagenta2::Bootstrap()
     m_clientModel = Utils::JsonStringOrEmpty(baseSettings, "clientModel");
     m_deviceModel = Utils::JsonStringOrEmpty(baseSettings, "deviceModel");
     m_accountBaseUrl = Utils::JsonStringOrEmpty(baseSettings, "accountBaseUrl");
-    m_sam3ClientId = Utils::JsonStringOrEmpty(baseSettings, "sam3ClientId");
     m_deviceTokensUrl = Utils::JsonStringOrEmpty(baseSettings, "deviceTokensUrl");
     m_lineAuthUrl = Utils::JsonStringOrEmpty(baseSettings, "lineAuthUrl");
+    m_sam3Client->InitSam3(Utils::JsonStringOrEmpty(baseSettings, "sam3Url"));
+    m_sam3Client->SetSam3ClientId(Utils::JsonStringOrEmpty(baseSettings, "sam3ClientId"));
     if (doc.HasMember("dcm"))
     {
       const rapidjson::Value& dcm = doc["dcm"];
@@ -421,6 +394,9 @@ bool CPVRMagenta2::DeviceManifest()
     GetParameter("mpxBasicUrlAllChannelSchedulesFeed", m_allChannelSchedulesFeed);
     GetParameter("mpxAllProgramsFeedUrl", m_allProgramsFeedUrl);
     GetParameter("widevineLicenseAcquisitionURL", m_widevineLicenseAcquisitionUrl);
+    GetParameter("mpxBasicUrlEntitledChannelsFeed", m_entitledChannelsFeed);
+    GetParameter("mpxBasicUrlSelectorService", m_basicUrlSelectorService);
+    replace(m_entitledChannelsFeed, "{{MpxAccountPid}}", m_accountPid);
   }
   const rapidjson::Value& sts = doc["sts"];
   m_sts.authorizeTokensUrl = Utils::JsonStringOrEmpty(sts, "authorizeTokensUrl");
@@ -625,6 +601,7 @@ CPVRMagenta2::CPVRMagenta2(CSettings* settings, HttpClient* httpclient):
   m_authMethods.password = false;
   m_authMethods.code = false;
   m_authMethods.line = false;
+  m_sam3Client = new Sam3Client(m_settings, m_httpClient);
   m_sessionId = Utils::CreateUUID();
   kodi::Log(ADDON_LOG_DEBUG, "Current SessionID %s", m_sessionId.c_str());
   m_httpClient->SetSessionId(m_sessionId);
@@ -766,7 +743,7 @@ bool CPVRMagenta2::GetStreamParameters(const std::string& url, std::string& src,
   trackingData.clear();
   if (reffailed) {
     src = reffailed->Attribute("src");
-    kodi::Log(ADDON_LOG_DEBUG, "SRC: %s", src);
+    kodi::Log(ADDON_LOG_DEBUG, "SRC: %s", src.c_str());
     std::string title = reffailed->Attribute("title");
     kodi::Log(ADDON_LOG_DEBUG, "Title: %s", title.c_str());
     std::string abstract = reffailed->Attribute("abstract");
@@ -856,7 +833,7 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
   properties.emplace_back(PVR_STREAM_PROPERTY_STREAMURL, src);
   kodi::Log(ADDON_LOG_DEBUG, "[PLAY STREAM] url: %s", src.c_str());
   if (!releasePid.empty()) {
-    std::string personaltoken = base64_decode(m_settings->GetMagenta2PersonalToken());
+    std::string personaltoken = base64_decode(m_sam3Client->GetPersonaToken());
     kodi::Log(ADDON_LOG_DEBUG, "Personal Token: %s", personaltoken.c_str());
     personaltoken.erase(0, m_accountBaseUrl.length());
     std::string account = m_accountBaseUrl + personaltoken.substr(0, personaltoken.find(":"));
@@ -877,6 +854,8 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
     kodi::Log(ADDON_LOG_DEBUG, "Licence Key: %s", lkey.c_str());
     properties.emplace_back(PVR_STREAM_PROPERTY_MIMETYPE, "application/xml+dash");
     properties.emplace_back(PVR_STREAM_PROPERTY_INPUTSTREAM, "inputstream.adaptive");
+    properties.emplace_back("inputstream.adaptive.manifest_headers", "User-Agent=" + WINDOWS_USER_AGENT);
+    properties.emplace_back("inputstream.adaptive.stream_headers", "User-Agent=" + WINDOWS_USER_AGENT);
     //properties.emplace_back("inputstream.adaptive.license_key", lkey);
     std::string urlFirst;
     std::string urlSecond;
@@ -964,14 +943,47 @@ PVR_ERROR CPVRMagenta2::GetChannelStreamProperties(
     if (channel.GetUniqueId() == mychannel.iUniqueId)
     {
       ReleaseLock();
-      std::string streamUrl = m_basicUrlSelectorService;
-      streamUrl = "https://link.theplatform.eu/s/mdeprod/media/" + mychannel.mediaPath + "?format=SMIL&formats=MPEG-DASH&tracking=true";
+      std::string streamUrl = m_basicUrlSelectorService + m_accountPid + "/media/" + mychannel.mediaPath + "?format=SMIL&formats=MPEG-DASH&tracking=true";
       kodi::Log(ADDON_LOG_DEBUG, "Stream URL -> %s", streamUrl.c_str());
 
       return SetStreamProperties(properties, streamUrl, true, false, false);
     }
   }
   return PVR_ERROR_FAILED;
+}
+
+bool CPVRMagenta2::GetGenre(int& primaryType, int& secondaryType, const std::string& primaryGenre, const std::string& secondaryGenre)
+{
+  for (const auto& currentgenre : m_genres)
+  {
+    if (currentgenre.primaryGenre == primaryGenre)
+    {
+      primaryType = currentgenre.genreType;
+      if (currentgenre.genreSubType != -1)
+        secondaryType = currentgenre.genreSubType;
+      else if (currentgenre.secondaryGenres.size() > 0)
+      {
+        secondaryType = -1;
+        for (int i=0; i < currentgenre.secondaryGenres.size(); i++)
+        {
+          std::vector<std::string> out;
+          tokenize2(secondaryGenre, EPG_STRING_TOKEN_SEPARATOR, out);
+          for (int j=0; j < out.size(); j++)
+          {
+            if (currentgenre.secondaryGenres[i].secondaryGenre == out[j] && secondaryType == -1)
+              secondaryType = currentgenre.secondaryGenres[i].secondaryGenreType;
+          }
+        }
+        if (secondaryType == -1)
+          secondaryType = 0;
+      } else
+        secondaryType = 0;
+      kodi::Log(ADDON_LOG_DEBUG, "Returning genre %i and subgenre %i for primary %s and secondary %s", primaryType, secondaryType, primaryGenre.c_str(), secondaryGenre.c_str());
+      return true;
+    }
+  }
+  kodi::Log(ADDON_LOG_DEBUG, "Not found primary %s and secondary %s", primaryGenre.c_str(), secondaryGenre.c_str());
+  return false;
 }
 
 void CPVRMagenta2::AddEPGEntry(const int& channelNumber, const rapidjson::Value& epgItem, kodi::addon::PVREPGTagsResultSet& results)
@@ -1089,7 +1101,8 @@ void CPVRMagenta2::AddEPGEntry(const int& channelNumber, const rapidjson::Value&
 */
   std::string genre_primary = "";
   std::string genre_secondary = "";
-  if (epgItem.HasMember("tags")) {
+  if (epgItem.HasMember("tags"))
+  {
     const rapidjson::Value& tags = epgItem["tags"];
     for (rapidjson::SizeType i = 0; i < tags.Size(); i++)
     {
@@ -1101,11 +1114,8 @@ void CPVRMagenta2::AddEPGEntry(const int& channelNumber, const rapidjson::Value&
         genre_primary += EPG_STRING_TOKEN_SEPARATOR;
       } else if (scheme == "genre-secondary")
       {
-        if (title != genre_primary)
-        {
-          genre_secondary += title;
-          genre_secondary += EPG_STRING_TOKEN_SEPARATOR;          
-        }
+        genre_secondary += title;
+        genre_secondary += EPG_STRING_TOKEN_SEPARATOR;
       } else if (scheme == "category")
       {
         //Todo for later
@@ -1114,10 +1124,24 @@ void CPVRMagenta2::AddEPGEntry(const int& channelNumber, const rapidjson::Value&
         kodi::Log(ADDON_LOG_DEBUG, "Unknown scheme type: %s with title: %s", scheme.c_str(), title.c_str());
       }
     }
-    genre_primary.erase(genre_primary.end() - 1);
-    genre_secondary.erase(genre_secondary.end() - 1);
-    kodi::Log(ADDON_LOG_DEBUG, "Primary Genres: %s", genre_primary.c_str());
-    kodi::Log(ADDON_LOG_DEBUG, "Secondary Genres: %s", genre_secondary.c_str());
+    if (!genre_secondary.empty())
+    {
+      genre_primary.erase(genre_primary.end() - 1);
+      genre_secondary.erase(genre_secondary.end() - 1);
+      int primaryType;
+      int secondaryType;
+      if (GetGenre(primaryType, secondaryType, genre_primary, genre_secondary))
+      {
+        tag.SetGenreType(primaryType);
+        tag.SetGenreSubType(secondaryType);
+      } else
+      {
+        kodi::Log(ADDON_LOG_DEBUG, "Primary Genres: %s", genre_primary.c_str());
+        kodi::Log(ADDON_LOG_DEBUG, "Secondary Genres: %s", genre_secondary.c_str());
+        tag.SetGenreType(EPG_GENRE_USE_STRING);
+        tag.SetGenreDescription(genre_secondary);
+      }
+    }
   }
 
   tag.SetFlags(epg_tag_flags);

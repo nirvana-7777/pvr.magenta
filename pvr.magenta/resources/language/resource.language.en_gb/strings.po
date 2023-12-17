@@ -153,5 +153,13 @@ msgid "Magenta 2.0"
 msgstr ""
 
 msgctxt "#30056"
-msgid "Personal Token"
+msgid "Persona Token"
+msgstr ""
+
+msgctxt "#30057"
+msgid "Credentials"
+msgstr ""
+
+msgctxt "#30058"
+msgid "Username / Password"
 msgstr ""

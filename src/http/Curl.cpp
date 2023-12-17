@@ -83,12 +83,12 @@ std::string Curl::Request(const std::string& action, const std::string& url, con
     statusCode = -2;
     return "";
   }
-  
+
   std::string proto = file.GetPropertyValue(ADDON_FILE_PROPERTY_RESPONSE_PROTOCOL, "");
   std::string::size_type posResponseCode = proto.find(' ');
   if (posResponseCode != std::string::npos)
     statusCode = atoi(proto.c_str() + (posResponseCode + 1));
-  
+
   if (statusCode >= 400) {
     return "";
   }
@@ -110,6 +110,7 @@ std::string Curl::Request(const std::string& action, const std::string& url, con
   }
 
   m_location = file.GetPropertyValue(ADDON_FILE_PROPERTY_RESPONSE_HEADER, "Location");
+  m_effectiveUrl = file.GetPropertyValue(ADDON_FILE_PROPERTY_EFFECTIVE_URL, "");
 
   // read the file
   static const unsigned int CHUNKSIZE = 16384;
