@@ -3,8 +3,9 @@
 
 # Magenta PVR client for Kodi
 This is a Magenta PVR client addon for Kodi. It provides Kodi integration for the streaming provider [Magenta TV](https://www.telekom.de/magenta-tv). A user account / paid subscription is required to use this addon. The content is geo-blocked and DRM protected. Therefore it requires inputstream adaptive in combination with widevine.
+Versions from 21.9.0 also support Magenta TV 2.0. For Magenta TV 2.0 you have to provide your username and password. After entering your credentials you have to restart Kodi.
 
-## Features
+## Features 1.0
 - Live TV
 - EPG
 - Recording Playback
@@ -13,6 +14,13 @@ This is a Magenta PVR client addon for Kodi. It provides Kodi integration for th
 - Playtimeshift
 - Automatic replacement of devices when more than 5 OTT devices reached
 - Mapping to Kodi genres by Musiktoto. Thank you!
+
+## Features 2.0
+- Live TV
+- Timeshift
+- EPG
+- Channel Groups
+- Genre mapping (edit mygenres2.json)
 
 ## Build instructions
 
