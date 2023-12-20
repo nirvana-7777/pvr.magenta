@@ -39,6 +39,18 @@ void replace(std::string& str, const std::string& from, const std::string& to) {
     start_pos = str.find(from);
   }
 }
+
+void PrepareTime(std::string& timestr)
+{
+  if (timestr.size() != 15)
+    return;
+  timestr.insert(4, "-");
+  timestr.insert(7, "-");
+  timestr.insert(13, ":");
+  timestr.insert(16, ":");
+  timestr += "Z";
+}
+
 /*
 bool CPVRMagenta2::IsChannelNumberExist(const unsigned int number)
 {
@@ -167,7 +179,8 @@ bool CPVRMagenta2::GetPostJson(const std::string& url, const std::string& body, 
 //        (url.find(m_deviceTokensUrl) != std::string::npos) ||
 //        (url.find(m_manifestBaseUrl) != std::string::npos))
       result = m_httpClient->HttpGetCached(url, 60 * 60 * 24 * 10, statusCode);
-    else if (url.find(m_allChannelStationsFeed) != std::string::npos) //||
+    else if ((url.find(m_allChannelStationsFeed) != std::string::npos) ||
+             (url.find(m_liveTvCategoryFeed) != std::string::npos))
 //             (url.find(m_entitledChannelsFeed) != std::string::npos))
       result = m_httpClient->HttpGetCached(url, 60 * 60 * 24 * 3, statusCode);
     else
@@ -202,6 +215,24 @@ bool CPVRMagenta2::GetPostJson(const std::string& url, const std::string& body, 
       }
       if (m_sam3Client->Sam3Login()) {
         kodi::Log(ADDON_LOG_DEBUG, "Reauth successful");
+        if (body.empty()) {
+          result = m_httpClient->HttpGet(url, statusCode);
+        } else
+        {
+          //  kodi::Log(ADDON_LOG_DEBUG, "Body: %s", body.c_str());
+          result = m_httpClient->HttpPost(url, body, statusCode);
+          doc.Parse(result.c_str());
+          if ((doc.GetParseError()) || (statusCode != 200 && statusCode != 206))
+          {
+            kodi::Log(ADDON_LOG_ERROR, "Failed to get JSON %s after reauth status code: %i", url.c_str(), statusCode);
+            return false;
+          }
+        }
+      } else
+      {
+        kodi::Log(ADDON_LOG_DEBUG, "Reauth failed");
+        kodi::gui::dialogs::OK::ShowAndGetInput("Reauth failed", "Reauth failed");
+        return false;
       }
       //SingleSignOn();
     }
@@ -322,8 +353,7 @@ bool CPVRMagenta2::Bootstrap()
     m_accountBaseUrl = Utils::JsonStringOrEmpty(baseSettings, "accountBaseUrl");
     m_deviceTokensUrl = Utils::JsonStringOrEmpty(baseSettings, "deviceTokensUrl");
     m_lineAuthUrl = Utils::JsonStringOrEmpty(baseSettings, "lineAuthUrl");
-    m_sam3Client->InitSam3(Utils::JsonStringOrEmpty(baseSettings, "sam3Url"));
-    m_sam3Client->SetSam3ClientId(Utils::JsonStringOrEmpty(baseSettings, "sam3ClientId"));
+    m_sam3Client->InitSam3(Utils::JsonStringOrEmpty(baseSettings, "sam3Url"), Utils::JsonStringOrEmpty(baseSettings, "sam3ClientId"));
     if (doc.HasMember("dcm"))
     {
       const rapidjson::Value& dcm = doc["dcm"];
@@ -349,11 +379,42 @@ bool CPVRMagenta2::GetParameter(const std::string& key, std::string& value)
   return false;
 }
 
-bool CPVRMagenta2::DeviceManifest()
+bool CPVRMagenta2::GetCategories()
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
-  //m_deviceId = "25dff370-a775-4cdf-a724-3ab5fc9b3a1c";
+  replace(m_liveTvCategoryFeed, "{MpxAccountPid}", m_accountPid);
+
+  std::string url = m_liveTvCategoryFeed;
+
+  rapidjson::Document doc;
+  if (!GetPostJson(url, "", doc)) {
+    return false;
+  }
+
+  if (!doc.HasMember("entries"))
+    return false;
+
+  const rapidjson::Value& entries = doc["entries"];
+  for (rapidjson::SizeType i = 0; i < entries.Size(); i++)
+  {
+    Magenta2Category category;
+    category.id = Utils::JsonStringOrEmpty(entries[i], "id");
+    category.description = Utils::JsonStringOrEmpty(entries[i], "description");
+    category.parentId = Utils::JsonStringOrEmpty(entries[i], "parentId");
+    category.order = Utils::JsonIntOrZero(entries[i], "order");
+    category.scheme = Utils::JsonStringOrEmpty(entries[i], "scheme");
+    category.level = Utils::JsonIntOrZero(entries[i], "level");
+    m_categories.emplace_back(category);
+    kodi::Log(ADDON_LOG_DEBUG, "Adding category %s", category.description.c_str());
+  }
+
+  return true;
+}
+
+bool CPVRMagenta2::DeviceManifest()
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
   std::string url = m_deviceTokensUrl +
                     "?model=" + Utils::UrlEncode(DEVICEMODEL) +
@@ -397,6 +458,7 @@ bool CPVRMagenta2::DeviceManifest()
     GetParameter("mpxBasicUrlEntitledChannelsFeed", m_entitledChannelsFeed);
     GetParameter("mpxBasicUrlSelectorService", m_basicUrlSelectorService);
     replace(m_entitledChannelsFeed, "{{MpxAccountPid}}", m_accountPid);
+    m_liveTvCategoryFeed = "https://feed.media.theplatform.eu/f/{MpxAccountPid}/{MpxAccountPid}-livetv-categories/Category";
   }
   const rapidjson::Value& sts = doc["sts"];
   m_sts.authorizeTokensUrl = Utils::JsonStringOrEmpty(sts, "authorizeTokensUrl");
@@ -481,6 +543,17 @@ bool CPVRMagenta2::GetDistributionRights()
   return true;
 }
 
+void CPVRMagenta2::AddGroupChannel(const std::string& id, const int& channelUid)
+{
+  for (auto& category : m_categories)
+  {
+    if (id == category.id)
+    {
+      category.channelUids.emplace_back(channelUid);
+    }
+  }
+}
+
 void CPVRMagenta2::AddChannelEntry(const rapidjson::Value& entry)
 {
   Magenta2Channel channel;
@@ -515,6 +588,14 @@ void CPVRMagenta2::AddChannelEntry(const rapidjson::Value& entry)
           picture.height = Utils::JsonIntOrZero(thumbnail, "height");
           channel.thumbnails.emplace_back(picture);
         }
+      }
+    }
+    if (stationItem.HasMember("dt$categoryIds"))
+    {
+      const rapidjson::Value& categoryIds = stationItem["dt$categoryIds"];
+      for (int j=0; j<categoryIds.Size(); j++)
+      {
+        AddGroupChannel(categoryIds[j].GetString(), channel.iUniqueId);
       }
     }
     CPVRMagenta2::m_channels.emplace_back(channel);
@@ -625,6 +706,9 @@ CPVRMagenta2::CPVRMagenta2(CSettings* settings, HttpClient* httpclient):
     kodi::Log(ADDON_LOG_DEBUG, "No appropriate URL found");
     return;
   }
+  m_categories.clear();
+  if (m_settings->IsGroupsenabled())
+    GetCategories();
 
   m_channels.clear();
   if (m_allChannelStationsFeed.empty())
@@ -666,8 +750,7 @@ PVR_ERROR CPVRMagenta2::GetCapabilities(kodi::addon::PVRCapabilities& capabiliti
   capabilities.SetSupportsEPGEdl(false);
   capabilities.SetSupportsTV(true);
   capabilities.SetSupportsRadio(false);
-  capabilities.SetSupportsChannelGroups(false);
-//  capabilities.SetSupportsChannelGroups(m_settings->IsGroupsenabled());
+  capabilities.SetSupportsChannelGroups(m_settings->IsGroupsenabled());
   capabilities.SetSupportsRecordings(false);
   capabilities.SetSupportsRecordingsDelete(false);
   capabilities.SetSupportsRecordingsUndelete(false);
@@ -826,9 +909,24 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
 
   std::string src;
   std::string releasePid;
-  GetStreamParameters(url, src, releasePid);
+  GetStreamParameters(url + "?format=SMIL&formats=MPEG-DASH&tracking=true", src, releasePid);
   if (src.empty()) {
     return PVR_ERROR_FAILED;
+  }
+  if (src.find("begin=") != std::string::npos)
+  {
+    std::string begin = src.substr(src.find("begin=") + 6, 15);
+    std::string end = src.substr(src.find("end=") + 4, 15);
+    PrepareTime(begin);
+    PrepareTime(end);
+    time_t beginTime = Utils::StringToTime2(begin);
+    kodi::Log(ADDON_LOG_DEBUG, "Begin time: %s / %u end time: %s / %u", begin.c_str(), beginTime, end.c_str(), Utils::StringToTime2(end));
+    if (time(NULL) - TIMEBUFFER2 > beginTime)
+    {
+      std::string newBegin = Utils::TimeToString3(time(NULL) - TIMEBUFFER2 + 10);
+      kodi::Log(ADDON_LOG_DEBUG, "New begin time: %s", newBegin.c_str());
+      src.replace(src.find("begin=") + 6, 15, newBegin);
+    }
   }
   properties.emplace_back(PVR_STREAM_PROPERTY_STREAMURL, src);
   kodi::Log(ADDON_LOG_DEBUG, "[PLAY STREAM] url: %s", src.c_str());
@@ -899,6 +997,7 @@ PVR_ERROR CPVRMagenta2::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultS
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
+  int startnum = m_settings->GetStartNum()-1;
   for (const auto& channel : m_channels)
   {
 
@@ -908,7 +1007,7 @@ PVR_ERROR CPVRMagenta2::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultS
 
       kodiChannel.SetUniqueId(static_cast<unsigned int>(channel.iUniqueId));
       kodiChannel.SetIsRadio(channel.bRadio);
-      kodiChannel.SetChannelNumber(static_cast<unsigned int>(channel.iChannelNumber));
+      kodiChannel.SetChannelNumber(static_cast<unsigned int>(startnum + channel.iChannelNumber));
       kodiChannel.SetChannelName(channel.strChannelName);
 
       int pictureNo = 0;
@@ -943,7 +1042,8 @@ PVR_ERROR CPVRMagenta2::GetChannelStreamProperties(
     if (channel.GetUniqueId() == mychannel.iUniqueId)
     {
       ReleaseLock();
-      std::string streamUrl = m_basicUrlSelectorService + m_accountPid + "/media/" + mychannel.mediaPath + "?format=SMIL&formats=MPEG-DASH&tracking=true";
+      std::string streamUrl = m_basicUrlSelectorService + m_accountPid + "/media/" + mychannel.mediaPath;
+      // + "?format=SMIL&formats=MPEG-DASH&tracking=true";
       kodi::Log(ADDON_LOG_DEBUG, "Stream URL -> %s", streamUrl.c_str());
 
       return SetStreamProperties(properties, streamUrl, true, false, false);
@@ -1012,13 +1112,15 @@ void CPVRMagenta2::AddEPGEntry(const int& channelNumber, const rapidjson::Value&
     if (itr != thumbnails.MemberEnd())
     {
       const rapidjson::Value& thumbnailsItem = (itr->value);
-
-      int width = Utils::JsonIntOrZero(thumbnailsItem, "width");
-      int height = Utils::JsonIntOrZero(thumbnailsItem, "height");
-      if ((width == 0) && (height == 0))
-        tag.SetIconPath(Utils::JsonStringOrEmpty(thumbnailsItem, "url"));
-      else
-        tag.SetIconPath(GetNgissUrl(Utils::JsonStringOrEmpty(thumbnailsItem, "url"), width, height));
+      if (!thumbnailsItem.IsNull())
+      {
+        int width = Utils::JsonIntOrZero(thumbnailsItem, "width");
+        int height = Utils::JsonIntOrZero(thumbnailsItem, "height");
+        if ((width == 0) && (height == 0))
+          tag.SetIconPath(Utils::JsonStringOrEmpty(thumbnailsItem, "url"));
+        else
+          tag.SetIconPath(GetNgissUrl(Utils::JsonStringOrEmpty(thumbnailsItem, "url"), width, height));
+      }
     }
   }
 
@@ -1243,5 +1345,182 @@ PVR_ERROR CPVRMagenta2::GetEPGForChannel(int channelUid,
                                                     "&range=1-1" +
                                                     "&fields=listings.program.guid";
   GetEPGFeed(channelUid, baseUrl, results);
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta2::IsEPGTagPlayable(const kodi::addon::PVREPGTag& tag, bool& bIsPlayable)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  bIsPlayable = false;
+
+  std::stringstream ss;
+  ss<< std::hex << tag.GetUniqueBroadcastId(); // int decimal_value
+  std::string epgId ( ss.str() );
+
+  while (epgId.size() < 8)
+    epgId.insert(0, "0");
+
+  kodi::Log(ADDON_LOG_DEBUG, "Checking if EPGTag with UID: %s is playable", epgId.c_str());
+
+  std::string programsUrl = m_allProgramsFeedUrl + "?form=cjson" +
+                                                   "&byGuid=" + "telekom.de-" + epgId +
+                                                   "&range=1-1" +
+                                                   "&fields=media.publicUrl,media.availableDate," +
+                                                   "media.expirationDate"; //programType
+
+  rapidjson::Document doc;
+  if (!GetPostJson(programsUrl, "", doc)) {
+    return PVR_ERROR_NO_ERROR;
+  }
+
+  if (!doc.HasMember("entries"))
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to get Programs feed");
+    return PVR_ERROR_NO_ERROR;
+  }
+
+  const rapidjson::Value& entries = doc["entries"];
+
+  if (entries.Size() != 1)
+    return PVR_ERROR_NO_ERROR;
+
+  if (!entries[0].HasMember("media"))
+    return PVR_ERROR_NO_ERROR;
+
+  const rapidjson::Value& media = entries[0]["media"];
+
+  if (media.Size() == 0)
+    return PVR_ERROR_NO_ERROR;
+
+  if (!media[0].HasMember("publicUrl") || !media[0].HasMember("availableDate") || !media[0].HasMember("expirationDate"))
+    return PVR_ERROR_NO_ERROR;
+
+  time_t availableDate = (time_t) (Utils::JsonInt64OrZero(media[0], "availableDate") / 1000);
+  time_t expirationDate = (time_t) (Utils::JsonInt64OrZero(media[0], "expirationDate") / 1000);
+  std::string publicUrl = Utils::JsonStringOrEmpty(media[0], "publicUrl");
+  auto current_time = time(NULL);
+
+  if (current_time > availableDate && current_time < expirationDate && !publicUrl.empty())
+  {
+    kodi::Log(ADDON_LOG_DEBUG, "Found public URL: %s", publicUrl.c_str());
+    bIsPlayable = true;
+  }
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta2::GetEPGTagStreamProperties(
+    const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVRStreamProperty>& properties)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  std::stringstream ss;
+  ss<< std::hex << tag.GetUniqueBroadcastId(); // int decimal_value
+  std::string epgId ( ss.str() );
+
+  while (epgId.size() < 8)
+    epgId.insert(0, "0");
+
+  kodi::Log(ADDON_LOG_DEBUG, "Get stream parameters for %s", epgId.c_str());
+
+  std::string programsUrl = m_allProgramsFeedUrl + "?form=cjson" +
+                                                   "&byGuid=" + "telekom.de-" + epgId +
+                                                   "&range=1-1" +
+                                                   "&fields=media.publicUrl"; //programType
+
+  rapidjson::Document doc;
+  if (!GetPostJson(programsUrl, "", doc)) {
+    return PVR_ERROR_FAILED;
+  }
+
+  if (!doc.HasMember("entries"))
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to get Programs feed");
+    return PVR_ERROR_FAILED;
+  }
+
+  const rapidjson::Value& entries = doc["entries"];
+
+  if (entries.Size() != 1)
+    return PVR_ERROR_FAILED;
+
+  if (!entries[0].HasMember("media"))
+    return PVR_ERROR_FAILED;
+
+  const rapidjson::Value& media = entries[0]["media"];
+
+  if (media.Size() == 0)
+    return PVR_ERROR_FAILED;
+
+  if (!media[0].HasMember("publicUrl"))
+    return PVR_ERROR_FAILED;
+
+  std::string publicUrl = Utils::JsonStringOrEmpty(media[0], "publicUrl");
+  if (!publicUrl.empty())
+  {
+    kodi::Log(ADDON_LOG_DEBUG, "Timeshift URL: %s", publicUrl.c_str());
+    return SetStreamProperties(properties, publicUrl, false, true, false);
+  }
+
+  return PVR_ERROR_FAILED;
+}
+
+PVR_ERROR CPVRMagenta2::GetChannelGroupsAmount(int& amount)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  amount = static_cast<int>(m_categories.size());
+  std::string amount_str = std::to_string(amount);
+  kodi::Log(ADDON_LOG_DEBUG, "Groups Amount: [%s]", amount_str.c_str());
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta2::GetChannelGroups(bool bRadio, kodi::addon::PVRChannelGroupsResultSet& results)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  for (const auto& category : m_categories)
+  {
+    kodi::addon::PVRChannelGroup kodiGroup;
+
+    if (!bRadio && category.level == 0 && !category.channelUids.empty())
+    {
+      kodiGroup.SetPosition(category.order);
+      kodiGroup.SetIsRadio(false); // is no radio group
+      kodiGroup.SetGroupName(category.description);
+
+      results.Add(kodiGroup);
+      kodi::Log(ADDON_LOG_DEBUG, "Group added: %s at position %u level %u", category.description.c_str(), category.order, category.level);
+    }
+  }
+
+  return PVR_ERROR_NO_ERROR;
+}
+
+PVR_ERROR CPVRMagenta2::GetChannelGroupMembers(const kodi::addon::PVRChannelGroup& group,
+                                           kodi::addon::PVRChannelGroupMembersResultSet& results)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  for (const auto& cgroup : m_categories)
+  {
+    if (cgroup.description != group.GetGroupName())
+      continue;
+
+    unsigned int position = 0;
+    for (const int& channelid : cgroup.channelUids)
+    {
+      kodi::addon::PVRChannelGroupMember kodiGroupMember;
+
+      kodiGroupMember.SetGroupName(cgroup.description);
+      kodiGroupMember.SetChannelUniqueId(static_cast<unsigned int>(channelid));
+      kodiGroupMember.SetChannelNumber(static_cast<unsigned int>(++position));
+
+      results.Add(kodiGroupMember);
+    }
+    return PVR_ERROR_NO_ERROR;
+  }
+
   return PVR_ERROR_NO_ERROR;
 }

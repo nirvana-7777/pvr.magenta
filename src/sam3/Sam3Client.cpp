@@ -51,7 +51,7 @@ void Sam3Client::ParseHtml(const std::string& result)
 std::string Sam3Client::SSOLogin()
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-  std::string url = "https://ssom.magentatv.de/login";
+  std::string url = SSO_URL + "login";
   int statusCode = 0;
   std::string result;
 
@@ -72,7 +72,7 @@ bool Sam3Client::SSOAuthenticate(const std::string& code, const std::string& sta
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
-  std::string url = "https://ssom.magentatv.de/authenticate";
+  std::string url = SSO_URL + "authenticate";
 
   //{
   //    "checkRefreshToken": true,
@@ -108,17 +108,17 @@ bool Sam3Client::SSOAuthenticate(const std::string& code, const std::string& sta
     return false;
   }
 
-  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] Result %s", result.c_str());
+//  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] Result %s", result.c_str());
 
   const rapidjson::Value& userInfo = doc["userInfo"];
   std::string m_userId = Utils::JsonStringOrEmpty(userInfo, "userId");
   std::string m_accountId = Utils::JsonStringOrEmpty(userInfo, "accountId");
   std::string m_displayName = Utils::JsonStringOrEmpty(userInfo, "displayName");
   m_personaToken = Utils::JsonStringOrEmpty(userInfo, "personaToken");
-  kodi::Log(ADDON_LOG_DEBUG, "UserID: %s, AccountID: %s", m_userId.c_str(), m_accountId.c_str());
+//  kodi::Log(ADDON_LOG_DEBUG, "UserID: %s, AccountID: %s", m_userId.c_str(), m_accountId.c_str());
   if (!m_personaToken.empty())
   {
-    kodi::Log(ADDON_LOG_DEBUG, "New personaToken: %s", m_personaToken.c_str());
+//    kodi::Log(ADDON_LOG_DEBUG, "New personaToken: %s", m_personaToken.c_str());
     m_settings->SetSetting("personaltoken", m_personaToken);
   }
 
@@ -137,16 +137,14 @@ Sam3Client::~Sam3Client()
 
 }
 
-void Sam3Client::SetSam3ClientId(const std::string& id)
-{
-  m_sam3ClientId = id;
-  m_sam3ClientId = "10LIVESAM30000004901FTVWEBCLIENTACC00000";
-  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] Client ID: %s", m_sam3ClientId.c_str());
-}
-
-bool Sam3Client::InitSam3(const std::string& url)
+bool Sam3Client::InitSam3(const std::string& url, const std::string& clientId)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  m_sam3ClientId = clientId;
+  m_sam3ClientId = "10LIVESAM30000004901FTVWEBCLIENTACC00000";
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] Client ID: %s", m_sam3ClientId.c_str());
+
   int statusCode = 0;
   std::string result;
 
@@ -163,7 +161,7 @@ bool Sam3Client::InitSam3(const std::string& url)
   m_issuer =  Utils::JsonStringOrEmpty(doc, "issuer");
   kodi::Log(ADDON_LOG_DEBUG, "[Sam3] Issuer: %s", m_issuer.c_str());
 
-  return true;
+  return m_personaToken.empty() ? Sam3Login() : true;
 }
 
 
@@ -269,24 +267,6 @@ bool Sam3Client::Sam3Login()
 
   return SSOAuthenticate(code, state);
 }
-
-// https://accounts.login.idm.telekom.com/oauth2/auth?state=1340809026
-//&claims=%7B%22id_token%22%3A%7B%22urn%3Atelekom.com%3Aall%22%3A%7B%22essential%22%3Afalse%7D%7D%7D
-//&client_id=10LIVESAM30000004901FTVWEBCLIENTACC00000
-//&code_challenge=1299732986
-//&nonce=64e42751031c29a8b5b2a3031508e6c9
-//&prompt=x-no-sso
-//&redirect_uri=https%3A%2F%2Fweb2.magentatv.de%2Fauthn%2Fidm
-//&response_type=code
-//&scope=openid+offline_access
-//&x-customizing-xrds-id=mtv
-
-//https://accounts.login.idm.telekom.com/oauth2/auth?
-//client_id=10LIVESAM30000004901NGTVMAGENTA000000000
-//&redirect_uri=https%3A%2F%2Fweb.magentatv.de%2Fauthn%2Fidm
-//&response_type=code
-//&scope=openid+offline_access
-
 
 bool Sam3Client::LineAuth()
 {

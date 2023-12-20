@@ -10,6 +10,8 @@
 #include "../Settings.h"
 #include "../http/HttpClient.h"
 
+static const std::string SSO_URL = "https://ssom.magentatv.de/";
+
 struct Sam3KV
 {
   std::string name;
@@ -22,8 +24,8 @@ public:
   Sam3Client(CSettings* settings, HttpClient* httpclient);
   ~Sam3Client();
 
-  void SetSam3ClientId(const std::string& id);
-  bool InitSam3(const std::string& url);
+//  void SetSam3ClientId(const std::string& id);
+  bool InitSam3(const std::string& url, const std::string& clientId);
   bool Sam3Login();
 
   std::string GetPersonaToken() {

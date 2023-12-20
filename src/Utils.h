@@ -17,8 +17,10 @@ public:
   static std::vector<std::string> SplitString(const std::string &str,
       const char &delim, int maxParts = 0);
   static time_t StringToTime(const std::string &timeString);
+  static time_t StringToTime2(const std::string &timeString);
   static std::string TimeToString(time_t time);
   static std::string TimeToString2(time_t time);
+  static std::string TimeToString3(time_t time);
   static int GetChannelId(const char * strChannelName);
   static std::string GetImageUrl(const std::string& imageToken);
   static std::string JsonStringOrEmpty(const rapidjson::Value& jsonValue, const char* fieldName);

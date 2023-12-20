@@ -27,6 +27,7 @@ static const std::string FIRMWARE = "API level 30";
 static const std::string RUNTIMEVERSION = "1";
 
 static const int MAX_CHANNEL_ENTRIES = 100;
+static const uint64_t TIMEBUFFER2 = 4 * 60 * 60; //4h time buffer
 
 static const std::vector<std::string> Magenta2StationThumbnailTypes
                   = { "stationBackground", "stationBarker", "stationLogo", "stationLogoColored" };
@@ -112,6 +113,17 @@ struct Magenta2Channel
 //  bool isEntitled;
 };
 
+struct Magenta2Category
+{
+  std::string id;
+  std::string description;
+  std::string parentId;
+  int order;
+  std::string scheme;
+  int level;
+  std::vector<int> channelUids;
+};
+
 class CPVRMagenta2
 {
 public:
@@ -130,6 +142,14 @@ public:
                              time_t start,
                              time_t end,
                              kodi::addon::PVREPGTagsResultSet& results);
+  PVR_ERROR IsEPGTagPlayable(const kodi::addon::PVREPGTag& tag, bool& bIsPlayable);
+  PVR_ERROR GetEPGTagStreamProperties(
+      const kodi::addon::PVREPGTag& tag,
+      std::vector<kodi::addon::PVRStreamProperty>& properties);
+  PVR_ERROR GetChannelGroupsAmount(int& amount);
+  PVR_ERROR GetChannelGroups(bool bRadio, kodi::addon::PVRChannelGroupsResultSet& results);
+  PVR_ERROR GetChannelGroupMembers(const kodi::addon::PVRChannelGroup& group,
+                                   kodi::addon::PVRChannelGroupMembersResultSet& results);
 
 private:
   PVR_ERROR SetStreamProperties(std::vector<kodi::addon::PVRStreamProperty>& properties,
@@ -140,6 +160,7 @@ private:
   std::vector<std::string> m_distributionRights;
   std::vector<Magenta2KV> m_parameters;
   std::vector<Magenta2Genre> m_genres;
+  std::vector<Magenta2Category> m_categories;
 
   HttpClient* m_httpClient;
   CSettings* m_settings;
@@ -158,8 +179,10 @@ private:
   bool DeviceManifest();
   bool Manifest();
   bool GetDistributionRights();
+  bool GetCategories();
   std::string GetNgissUrl(const std::string& url, const int& width, const int& height);
   void AddChannelEntry(const rapidjson::Value& entry);
+  void AddGroupChannel(const std::string& id, const int& channelUid);
   void AddEntitlementEntry(const rapidjson::Value& entry);
   bool GetFeed(/*const int& feed,*/ const int& maxEntries, /*const std::string& params,*/ std::string& baseUrl/*, kodi::addon::PVREPGTagsResultSet& results*/,
                 handleentry_t HandleEntry);

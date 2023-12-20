@@ -1656,6 +1656,10 @@ bool CPVRMagenta::UpdateEPGEvent(const kodi::addon::PVREPGTag& oldtag)
 PVR_ERROR CPVRMagenta::IsEPGTagPlayable(const kodi::addon::PVREPGTag& tag, bool& bIsPlayable)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+
+  if (m_isMagenta2)
+    return m_magenta2->IsEPGTagPlayable(tag, bIsPlayable);
+
   bIsPlayable = false;
 
 //  UpdateEPGEvent(tag);
@@ -1796,6 +1800,8 @@ PVR_ERROR CPVRMagenta::GetEPGTagStreamProperties(
     const kodi::addon::PVREPGTag& tag, std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetEPGTagStreamProperties(tag, properties);
 
   for (const auto& channel : m_channels)
   {
@@ -1893,6 +1899,9 @@ PVR_ERROR CPVRMagenta::GetChannelStreamProperties(
 PVR_ERROR CPVRMagenta::GetChannelGroupsAmount(int& amount)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetChannelGroupsAmount(amount);
+
   amount = static_cast<int>(m_categories.size());
   std::string amount_str = std::to_string(amount);
   kodi::Log(ADDON_LOG_DEBUG, "Groups Amount: [%s]", amount_str.c_str());
@@ -1903,6 +1912,8 @@ PVR_ERROR CPVRMagenta::GetChannelGroupsAmount(int& amount)
 PVR_ERROR CPVRMagenta::GetChannelGroups(bool bRadio, kodi::addon::PVRChannelGroupsResultSet& results)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetChannelGroups(bRadio, results);
 
   std::vector<MagentaCategory>::iterator it;
   for (it = m_categories.begin(); it != m_categories.end(); ++it)
@@ -1925,6 +1936,9 @@ PVR_ERROR CPVRMagenta::GetChannelGroupMembers(const kodi::addon::PVRChannelGroup
                                            kodi::addon::PVRChannelGroupMembersResultSet& results)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetChannelGroupMembers(group, results);
+
   for (const auto& cgroup : m_categories)
   {
     if (cgroup.name != group.GetGroupName())
