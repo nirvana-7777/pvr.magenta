@@ -141,3 +141,15 @@ std::string base64_decode(std::string const& encoded_string)
 
   return ret;
 }
+
+std::string base64_addpadding(const std::string &s) {
+
+  std::string t = s;
+  int mod = s.length() % 3;
+  if (mod == 1)
+    t += "==";
+  else if (mod == 2)
+    t += "=";
+
+  return t;
+}

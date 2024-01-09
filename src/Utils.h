@@ -26,6 +26,7 @@ public:
   static std::string JsonStringOrEmpty(const rapidjson::Value& jsonValue, const char* fieldName);
   static int JsonIntOrZero(const rapidjson::Value& jsonValue, const char* fieldName);
   static int64_t JsonInt64OrZero(const rapidjson::Value& jsonValue, const char* fieldName);
+  static double JsonDoubleOrZero(const rapidjson::Value& jsonValue, const char* fieldName);
   static bool JsonBoolOrFalse(const rapidjson::Value& jsonValue, const char* fieldName);
   static std::string CreateUUID();
 };

@@ -5,6 +5,7 @@
 #include "../Utils.h"
 #include <kodi/AddonBase.h>
 #include "../Settings.h"
+#include "../auth/AuthClient.h"
 
 static const std::string MAGENTA_USER_AGENT = std::string("Kodi/")
     + std::string(STR(KODI_VERSION)) + std::string(" pvr.magenta/")
@@ -126,8 +127,16 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
   {
     //MagentaTV 2.0
     curl.AddHeader("Accept-Ranges", "none");
-    if ((url.find("license") != std::string::npos) || (url.find("link") != std::string::npos)) {
-      curl.AddHeader("Authorization", "Basic " + m_settings->GetMagenta2PersonalToken());
+    if (((url.find("license") != std::string::npos) ||
+         (url.find("link") != std::string::npos) ||
+         (url.find("npvr-audience") != std::string::npos)) &&
+         (m_authClient != nullptr)) {
+//      curl.AddHeader("Authorization", "Basic " + m_settings->GetMagenta2PersonaToken());
+      std::string personaToken;
+      if (m_authClient->GetPersonaToken(personaToken))
+        curl.AddHeader("Authorization", "Basic " + personaToken);
+      else
+        kodi::Log(ADDON_LOG_ERROR,"Couldn't fetch persona token!");
     } else if (url.find("ssom") != std::string::npos) {
       curl.AddHeader("origin", "https://web2.magentatv.de");
       curl.AddHeader("referer", "https://web2.magentatv.de/");
@@ -140,6 +149,12 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
       curl.AddHeader("x-device-authorization", "TAuth realm=\"device\",device_token=\"" + m_deviceToken + "\"");
     } else if (url.find("oauth2/auth?") != std::string::npos) {
       curl.AddHeader("referer", "https://web2.magentatv.de/");
+    }
+    if (url.find("npvr-audience") != std::string::npos) {
+      curl.AddHeader("accept", "application/json;v=2");
+    }
+    if (url.find("yo-digital.com") != std::string::npos) {
+      curl.AddHeader("requestid", Utils::CreateUUID());
     }
   }
 

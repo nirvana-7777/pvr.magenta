@@ -1274,6 +1274,9 @@ uint64_t CPVRMagenta::GetPVRSpace(const int type)
 PVR_ERROR CPVRMagenta::GetDriveSpace(uint64_t& total, uint64_t& used)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetDriveSpace(total, used);
+
   total = GetPVRSpace(0) * KBM;
   used = GetPVRSpace(1) * KBM;
   kodi::Log(ADDON_LOG_DEBUG, "Reported %llu/%llu used/total", used, total);
@@ -1984,6 +1987,9 @@ int CPVRMagenta::GetGroupRecordingsAmount()
 PVR_ERROR CPVRMagenta::GetRecordingsAmount(bool deleted, int& amount)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetRecordingsAmount(deleted, amount);
+
   amount = static_cast<int>(m_recordings.size());
   amount += GetGroupRecordingsAmount();
   std::string amount_str = std::to_string(amount);
@@ -2043,6 +2049,9 @@ void CPVRMagenta::FillPVRRecording(kodi::addon::PVRRecording& kodiRecording, con
 PVR_ERROR CPVRMagenta::GetRecordings(bool deleted, kodi::addon::PVRRecordingsResultSet& results)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetRecordings(deleted, results);
+
   if (!GetTimersRecordings(true)) {
     kodi::Log(ADDON_LOG_ERROR, "Failed to get recordings from backend");
     return PVR_ERROR_SERVER_ERROR;
@@ -2082,6 +2091,8 @@ PVR_ERROR CPVRMagenta::GetRecordingStreamProperties(
     std::vector<kodi::addon::PVRStreamProperty>& properties)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  if (m_isMagenta2)
+    return m_magenta2->GetRecordingStreamProperties(recording, properties);
 
   for (const auto& current_recording : m_recordings)
   {

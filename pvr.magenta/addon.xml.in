@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="pvr.magenta"
-  version="21.8.1"
+  version="21.9.0"
   name="Magenta PVR Client"
   provider-name="Nirvana">
   <requires>
     @ADDON_DEPENDS@
-    <import addon="inputstream.adaptive" minversion="21.0.0"/>
+    <import addon="inputstream.adaptive" minversion="21.4.0"/>
     <import addon="script.module.inputstreamhelper" version="0.5.8"/>
   </requires>
   <extension

@@ -148,7 +148,6 @@ time_t Utils::StringToTime2(const std::string &timeString)
 
   time_t ret = timegm(&tm);
   return ret;
-
 }
 
 std::string Utils::TimeToString(const time_t time)
@@ -218,6 +217,15 @@ int64_t Utils::JsonInt64OrZero(const rapidjson::Value& jsonValue, const char* fi
     return 0;
   }
   return jsonValue[fieldName].GetInt64();
+}
+
+double Utils::JsonDoubleOrZero(const rapidjson::Value& jsonValue, const char* fieldName)
+{
+  if (!jsonValue.HasMember(fieldName) || !jsonValue[fieldName].IsDouble())
+  {
+    return 0;
+  }
+  return jsonValue[fieldName].GetDouble();
 }
 
 bool Utils::JsonBoolOrFalse(const rapidjson::Value& jsonValue, const char* fieldName)

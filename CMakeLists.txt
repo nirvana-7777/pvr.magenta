@@ -20,6 +20,10 @@ set(PVRMAGENTA_SOURCES
   src/http/Cache.cpp
   src/http/HttpClient.cpp
   src/sam3/Sam3Client.cpp
+  src/taa/TaaClient.cpp
+  src/sso/SsoClient.cpp
+  src/auth/AuthClient.cpp
+  src/auth/JWT.cpp
   src/Utils.cpp
   src/sha256.cpp
   src/Base64.cpp
@@ -29,11 +33,16 @@ set(PVRMAGENTA_SOURCES
 )
 
 set(PVRMAGENTA_HEADERS
+  src/Globals.h
   src/md5.h
   src/http/Curl.h
   src/http/Cache.h
   src/http/HttpClient.h
   src/sam3/Sam3Client.h
+  src/taa/TaaClient.h
+  src/sso/SsoClient.h
+  src/auth/AuthClient.h
+  src/auth/JWT.h
   src/Utils.h
   src/sha256.h
   src/hmac.h

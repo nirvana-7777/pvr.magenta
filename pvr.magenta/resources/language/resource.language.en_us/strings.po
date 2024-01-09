@@ -163,3 +163,7 @@ msgstr ""
 msgctxt "#30058"
 msgid "Username / Password"
 msgstr ""
+
+msgctxt "#30059"
+msgid "Persona Token Expire Date"
+msgstr ""

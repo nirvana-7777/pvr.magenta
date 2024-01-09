@@ -14,6 +14,7 @@ Versions from 21.9.0 also support Magenta TV 2.0. For Magenta TV 2.0 you have to
 - Playtimeshift
 - Automatic replacement of devices when more than 5 OTT devices reached
 - Mapping to Kodi genres by Musiktoto. Thank you!
+- OTP Login / Line Auth
 
 ## Features 2.0
 - Live TV
@@ -21,6 +22,8 @@ Versions from 21.9.0 also support Magenta TV 2.0. For Magenta TV 2.0 you have to
 - EPG
 - Channel Groups
 - Genre mapping (edit mygenres2.json)
+- Playback recordings
+- Username / Password Login
 
 ## Build instructions
 

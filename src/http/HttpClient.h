@@ -8,6 +8,8 @@
 //#include "../sql/ParameterDB.h"
 #include "HttpStatusCodeHandler.h"
 
+class AuthClient;
+
 class HttpClient
 {
 public:
@@ -24,6 +26,9 @@ public:
   void SetStatusCodeHandler(HttpStatusCodeHandler* statusCodeHandler) {
     m_statusCodeHandler = statusCodeHandler;
   }
+  void SetAuthClient(AuthClient* authclient) {
+    m_authClient = authclient;
+  }
   std::string GetEffectiveUrl() {
     return m_effectiveUrl;
   }
@@ -34,6 +39,7 @@ private:
   std::string GenerateUUID();
   std::string m_uuid;
   CSettings* m_settings;
+  AuthClient* m_authClient = nullptr;
   HttpStatusCodeHandler *m_statusCodeHandler = nullptr;
   std::string m_sessionId;
   std::string m_deviceToken;

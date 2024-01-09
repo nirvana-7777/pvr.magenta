@@ -16,17 +16,20 @@ public:
 
   bool Load();
   ADDON_STATUS SetSetting(const std::string& settingName, const std::string& settingValue);
+  ADDON_STATUS SetIntSetting(const std::string& settingName, const int& settingValue);
+
   bool VerifySettings();
 
   const int& GetTerminalType() const { return m_terminaltype; }
   const int& GetDeleteMode() const { return m_deletemode; }
   const int& GetDeleteModeSeries() const { return m_deletemodeseries; }
+  const int& GetMagenta2PersonaExpiry() const { return m_personaexpiry; }
   const std::string& GetMagentaEPGToken() const { return m_epgToken; }
   const std::string& GetMagentaOpenIDToken() const { return m_openidToken; }
   const std::string& GetMagentaTVToken() const { return m_tvToken; }
   const std::string& GetMagentaRefreshToken() const { return m_refreshToken; }
   const std::string& GetMagentaCSRFToken() const { return m_csrfToken; }
-  const std::string& GetMagenta2PersonalToken() const { return m_personalToken; }
+  const std::string& GetMagenta2PersonaToken() const { return m_personalToken; }
   const std::string& GetMagentaDeviceID() const { return m_magentaDeviceID; }
   const std::string& GetMagentaUsername() const { return m_userName; }
   const std::string& GetMagentaPassword() const { return m_password; }
@@ -54,6 +57,7 @@ private:
   int m_terminaltype;
   int m_deletemode;
   int m_deletemodeseries;
+  int m_personaexpiry;
   bool m_hideunsubscribed;
   bool m_usecustomchannels;
   bool m_whitelogos;
