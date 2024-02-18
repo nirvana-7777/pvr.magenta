@@ -35,7 +35,6 @@ public:
 //  bool SSOAuthenticate(const std::string& code, const std::string& state);
 
 private:
-  bool IsJWTexpired(const std::string& token);
   bool IsPersonaTokenExpired(const std::string& personaToken);
   void ComposePersonaToken(const std::string& dcCtsPersonaToken);
 

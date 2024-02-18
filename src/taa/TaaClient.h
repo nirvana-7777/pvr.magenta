@@ -13,8 +13,6 @@
 
 static const std::string APPVERSION2 = "3.134.4462";
 static const std::string IDM = "TDGIDM";
-static const std::string MODEL = "SHIELD Android TV";
-static const std::string OS = "API level 30";
 
 class TaaClient
 {
@@ -48,5 +46,6 @@ private:
   std::string m_consumerId;
   std::string m_tvAccountId;
   std::string m_accountId;
+  int m_platform;
 //  std::string m_accountUri;
 };

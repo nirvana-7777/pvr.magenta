@@ -16,14 +16,12 @@ public:
 
   bool Load();
   ADDON_STATUS SetSetting(const std::string& settingName, const std::string& settingValue);
-  ADDON_STATUS SetIntSetting(const std::string& settingName, const int& settingValue);
 
   bool VerifySettings();
 
   const int& GetTerminalType() const { return m_terminaltype; }
   const int& GetDeleteMode() const { return m_deletemode; }
   const int& GetDeleteModeSeries() const { return m_deletemodeseries; }
-  const int& GetMagenta2PersonaExpiry() const { return m_personaexpiry; }
   const std::string& GetMagentaEPGToken() const { return m_epgToken; }
   const std::string& GetMagentaOpenIDToken() const { return m_openidToken; }
   const std::string& GetMagentaTVToken() const { return m_tvToken; }
@@ -57,7 +55,6 @@ private:
   int m_terminaltype;
   int m_deletemode;
   int m_deletemodeseries;
-  int m_personaexpiry;
   bool m_hideunsubscribed;
   bool m_usecustomchannels;
   bool m_whitelogos;

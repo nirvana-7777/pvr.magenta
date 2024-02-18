@@ -14,7 +14,7 @@ SsoClient::SsoClient(CSettings* setting, HttpClient* httpclient):
   m_settings(setting),
   m_httpClient(httpclient)
 {
-  m_personaToken = m_settings->GetMagenta2PersonaToken();
+//  m_personaToken = m_settings->GetMagenta2PersonaToken();
 //  m_deviceId = m_settings->GetMagentaDeviceID();
 }
 
@@ -47,7 +47,7 @@ std::string SsoClient::SSOLogin()
   return Utils::JsonStringOrEmpty(doc, "loginRedirectUrl");
 }
 
-bool SsoClient::SSOAuthenticate(const std::string& code, const std::string& state)
+bool SsoClient::SSOAuthenticate(const std::string& code, const std::string& state, std::string& personaToken)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
@@ -102,13 +102,13 @@ bool SsoClient::SSOAuthenticate(const std::string& code, const std::string& stat
   std::string m_userId = Utils::JsonStringOrEmpty(userInfo, "userId");
   std::string m_accountId = Utils::JsonStringOrEmpty(userInfo, "accountId");
   std::string m_displayName = Utils::JsonStringOrEmpty(userInfo, "displayName");
-  m_personaToken = Utils::JsonStringOrEmpty(userInfo, "personaToken");
+  personaToken = Utils::JsonStringOrEmpty(userInfo, "personaToken");
 //  kodi::Log(ADDON_LOG_DEBUG, "UserID: %s, AccountID: %s", m_userId.c_str(), m_accountId.c_str());
-  if (!m_personaToken.empty())
-  {
+//  if (!m_personaToken.empty())
+//  {
 //    kodi::Log(ADDON_LOG_DEBUG, "New personaToken: %s", m_personaToken.c_str());
-    m_settings->SetSetting("personaltoken", m_personaToken);
-  }
+//    m_settings->SetSetting("personaltoken", m_personaToken);
+//  }
 
   return true;
 }

@@ -50,8 +50,8 @@ public:
   void SetDeviceToken(const std::string& token);
   void SetAuthorizeTokenUrl(const std::string& url);
   bool InitSam3();
-  bool Sam3Login();
-  bool ReAuthenticate();
+  bool Sam3Login(std::string& personaToken);
+  bool ReAuthenticate(std::string& personaToken);
   bool GetAccessToken(const std::string& scope, std::string& accessToken);
 /*
   std::string GetPersonaToken() {

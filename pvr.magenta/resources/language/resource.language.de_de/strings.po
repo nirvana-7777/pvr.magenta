@@ -171,5 +171,9 @@ msgid "Username / Password"
 msgstr "Benutzername / Passwort"
 
 msgctxt "#30059"
-msgid "Persona Token Expire Date"
-msgstr "Ablaufdatum PersonaToken"
+msgid "Web Device"
+msgstr "Web"
+
+msgctxt "#30060"
+msgid "Android Mobile"
+msgstr "Android Mobile"

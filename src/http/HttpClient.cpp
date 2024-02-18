@@ -1,3 +1,4 @@
+#include "../Globals.h"
 #include "HttpClient.h"
 #include "Cache.h"
 #include <random>
@@ -6,17 +7,18 @@
 #include <kodi/AddonBase.h>
 #include "../Settings.h"
 #include "../auth/AuthClient.h"
-
+/*
 static const std::string MAGENTA_USER_AGENT = std::string("Kodi/")
     + std::string(STR(KODI_VERSION)) + std::string(" pvr.magenta/")
     + std::string(STR(MAGENTA_VERSION));
-
+*/
 static const std::string SSO_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 HttpClient::HttpClient(CSettings* settings):
   m_settings(settings)
 {
   m_sessionId = "";
+  m_platform = m_settings->GetTerminalType();
 }
 
 HttpClient::~HttpClient()
@@ -109,7 +111,7 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
   if (url.find("ssom") != std::string::npos)
     curl.AddHeader("User-Agent", SSO_USER_AGENT);
   else
-    curl.AddHeader("User-Agent", MAGENTA_USER_AGENT);
+    curl.AddHeader("User-Agent", Magenta2Parameters[m_platform].user_agent);
   if ((url.find("oauth2") != std::string::npos) || (url.find("factorx") != std::string::npos) || (url.find("/caas/atvlauncher/v1/token") != std::string::npos)) {
     curl.AddHeader("Content-Type", "application/x-www-form-urlencoded");
   } else {

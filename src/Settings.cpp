@@ -143,13 +143,6 @@ bool CSettings::Load()
     return false;
   }
 
-  if (!kodi::addon::CheckSettingInt("personaexpiry", m_personaexpiry))
-  {
-    /* If setting is unknown fallback to defaults */
-    kodi::Log(ADDON_LOG_ERROR, "Couldn't get 'personaexpiry' setting");
-    return false;
-  }
-
   if (!kodi::addon::CheckSettingInt("deletemode", m_deletemode))
   {
     /* If setting is unknown fallback to defaults */
@@ -255,24 +248,6 @@ ADDON_STATUS CSettings::SetSetting(const std::string& settingName,
     }
   }
 
-  return ADDON_STATUS_OK;
-}
-
-ADDON_STATUS CSettings::SetIntSetting(const std::string& settingName,
-                                   const int& settingValue)
-{
-  if (settingName == "personaexpiry")
-  {
-    int tmp_iToken;
-    kodi::Log(ADDON_LOG_DEBUG, "Changed Setting 'personaexpiry'");
-    tmp_iToken = m_personaexpiry;
-    m_personaexpiry = settingValue;
-    if (tmp_iToken != m_personaexpiry)
-    {
-      kodi::addon::SetSettingInt("personaexpiry", m_personaexpiry);
-    }
-  }
-  
   return ADDON_STATUS_OK;
 }
 

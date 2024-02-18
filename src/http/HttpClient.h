@@ -44,6 +44,7 @@ private:
   std::string m_sessionId;
   std::string m_deviceToken;
   std::string m_effectiveUrl;
+  int m_platform;
 };
 
 //#endif /* SRC_HTTP_HTTPCLIENT_H_ */

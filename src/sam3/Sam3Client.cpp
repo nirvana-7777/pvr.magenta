@@ -131,9 +131,9 @@ Sam3Client::Sam3Client(CSettings* setting, HttpClient* httpclient, SsoClient* ss
   m_refreshToken = m_settings->GetMagentaRefreshToken();
 }
 
-bool Sam3Client::ReAuthenticate()
+bool Sam3Client::ReAuthenticate(std::string& personaToken)
 {
-  return m_ssoClient->SSOAuthenticate("", "");
+  return m_ssoClient->SSOAuthenticate("", "", personaToken);
 }
 
 Sam3Client::~Sam3Client()
@@ -184,7 +184,7 @@ bool Sam3Client::InitSam3()
 }
 
 
-bool Sam3Client::Sam3Login()
+bool Sam3Client::Sam3Login(std::string& personaToken)
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
   int statusCode = 0;
@@ -289,7 +289,7 @@ bool Sam3Client::Sam3Login()
 //  kodi::Log(ADDON_LOG_DEBUG, "URL: %s, Code: %s, State: %s", effectiveUrl.c_str(), code.c_str(), state.c_str());
   kodi::Log(ADDON_LOG_DEBUG, "URL: %s, Code: %s, State: %s", effectiveUrl.c_str(), code.c_str(), state.c_str());
 
-  return m_ssoClient->SSOAuthenticate(code, state);
+  return m_ssoClient->SSOAuthenticate(code, state, personaToken);
 }
 
 bool Sam3Client::LineAuth()

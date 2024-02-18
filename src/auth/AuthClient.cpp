@@ -5,6 +5,7 @@
  *  See LICENSE.md for more information.
  */
 
+#include "../Globals.h"
 #include "AuthClient.h"
 #include "../Settings.h"
 #include "../Utils.h"
@@ -55,9 +56,7 @@ AuthClient::AuthClient(CSettings* setting, HttpClient* httpclient):
 {
   m_ssoClient = new SsoClient(m_settings, m_httpClient);
   m_sam3Client = new Sam3Client(m_settings, m_httpClient, m_ssoClient);
-
   m_taaClient = new TaaClient(m_settings, m_httpClient, m_sam3Client);
-
 
   m_personaToken = m_settings->GetMagenta2PersonaToken();
 //  m_deviceId = m_settings->GetMagentaDeviceID();
@@ -76,45 +75,6 @@ void AuthClient::ComposePersonaToken(const std::string& dcCtsPersonaToken)
   m_personaToken = base64_encode(rawToken.c_str(), rawToken.length());
   kodi::Log(ADDON_LOG_DEBUG, "[Auth] reported new personaToken: %s", m_personaToken.c_str());
   m_settings->SetSetting("personaltoken", m_personaToken);
-}
-
-bool AuthClient::IsJWTexpired(const std::string& token)
-{
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
-
-  std::string header;
-  std::string payload;
-  std::string signature;
-
-//  kodi::Log(ADDON_LOG_DEBUG, "[Taa] Token to verify: %s", token.c_str());
-
-  if (!ParseToken(token, header, payload, signature))
-  {
-    kodi::Log(ADDON_LOG_ERROR, "[Auth] Token Parse error");
-    return true;
-  }
-
-  std::string decPayload = base64_decode(payload);
-
-//  kodi::Log(ADDON_LOG_DEBUG, "[Taa] payload: %s decoded %s", payload.c_str(), decPayload.c_str());
-
-  rapidjson::Document doc;
-  doc.Parse(decPayload.c_str());
-  if (doc.GetParseError())
-  {
-    kodi::Log(ADDON_LOG_ERROR, "[Auth] JWTexpired JSON parse error for %s", decPayload.c_str());
-    return true;
-  }
-
-  time_t tokenExp = Utils::JsonIntOrZero(doc, "exp");
-
-  kodi::Log(ADDON_LOG_DEBUG, "[Auth] Test if expired: %u", tokenExp);
-
-  bool isExpired = (time(NULL) > tokenExp);
-  if (isExpired)
-    kodi::Log(ADDON_LOG_DEBUG, "[Auth] JWT is expired!");
-
-  return isExpired;
 }
 
 bool AuthClient::IsPersonaTokenExpired(const std::string& personaToken)
@@ -138,18 +98,28 @@ bool AuthClient::GetPersonaToken(std::string& personaToken)
 
   if (m_personaToken.empty() || IsPersonaTokenExpired(m_personaToken))
   {
-    std::string dcCtsPersonaToken;
-    if (!m_taaClient->UpdateTaa(dcCtsPersonaToken))
+    kodi::Log(ADDON_LOG_DEBUG, "[Auth] Persona is empty or expired!");
+    if (m_settings->GetTerminalType() == TERMINAL_WEB)
     {
-      kodi::Log(ADDON_LOG_DEBUG, "[Auth] TAAUpdate failed!");
-      return false;
+      if (!m_sam3Client->Sam3Login(m_personaToken))
+      {
+        kodi::Log(ADDON_LOG_ERROR, "[Auth] Sam3Login failed!");
+        return false;
+      }
+    } else
+    {
+      std::string dcCtsPersonaToken;
+      if (!m_taaClient->UpdateTaa(dcCtsPersonaToken))
+      {
+        kodi::Log(ADDON_LOG_ERROR, "[Auth] TAAUpdate failed!");
+        return false;
+      }
+      ComposePersonaToken(dcCtsPersonaToken);
     }
-    ComposePersonaToken(dcCtsPersonaToken);
+    m_settings->SetSetting("personaltoken", m_personaToken);
   }
 
   personaToken = m_personaToken;
-
-//  personaToken = m_sam3Client->GetPersonaToken();
 
   return true;
 }

@@ -41,6 +41,8 @@
             <options>
               <option label="30042">0</option> <!-- Android TV -->
               <option label="30043">1</option> <!-- Magenta Stick -->
+              <option label="30059">2</option> <!-- Web -->
+              <option label="30060">3</option> <!-- Android Mobile -->
             </options>
           </constraints>
           <control type="list" format="integer" />
@@ -156,10 +158,6 @@
             <allowempty>true</allowempty>
           </constraints>
           <control type="edit" format="string" />
-        </setting>
-        <setting id="personaexpiry" type="integer" label="30059">
-          <level>4</level>
-          <default>0</default>
         </setting>
         <setting id="deviceid" type="string" label="30004">
           <level>4</level>

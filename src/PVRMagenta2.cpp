@@ -317,7 +317,7 @@ bool CPVRMagenta2::Bootstrap()
   m_deviceModel.clear();
 
   std::string url = BOOTSTRAP_URL;
-  replace(url, "{configGroupId}", CONFIG_GROUP_ID);
+  replace(url, "{configGroupId}", Magenta2Parameters[m_platform].config_group_id);
   url = url + "deviceid=" + m_deviceId;
 
   rapidjson::Document doc;
@@ -399,12 +399,12 @@ bool CPVRMagenta2::DeviceManifest()
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
   std::string url = m_deviceTokensUrl +
-                    "?model=" + Utils::UrlEncode(DEVICEMODEL) +
+                    "?model=" + Utils::UrlEncode(Magenta2Parameters[m_platform].device_model) +
                     "&deviceId=" + m_deviceId +
-                    "&appname=" + APPNAME +
-                    "&appVersion=" + APPVERSION +
-                    "&firmware=" + Utils::UrlEncode(FIRMWARE) +
-                    "&runtimeVersion=" + RUNTIMEVERSION +
+                    "&appname=" + Magenta2Parameters[m_platform].app_name +
+                    "&appVersion=" + Magenta2Parameters[m_platform].app_version +
+                    "&firmware=" + Utils::UrlEncode(Magenta2Parameters[m_platform].firmware) +
+                    "&runtimeVersion=" + Magenta2Parameters[m_platform].runtime +
                     "&duid=" + m_deviceId;
 
   rapidjson::Document doc;
@@ -459,7 +459,7 @@ bool CPVRMagenta2::Manifest()
 {
   kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
 
-  replace(m_manifestBaseUrl, "{configGroupId}", CONFIG_GROUP_ID);
+  replace(m_manifestBaseUrl, "{configGroupId}", Magenta2Parameters[m_platform].config_group_id);
   std::string url = m_manifestBaseUrl + "?deviceid=" + m_deviceId;
 
   rapidjson::Document doc;
@@ -674,6 +674,7 @@ CPVRMagenta2::CPVRMagenta2(CSettings* settings, HttpClient* httpclient):
   kodi::Log(ADDON_LOG_DEBUG, "Current SessionID %s", m_sessionId.c_str());
   m_httpClient->SetSessionId(m_sessionId);
   m_deviceId = m_settings->GetMagentaDeviceID();
+  m_platform = m_settings->GetTerminalType();
   if (m_deviceId.empty()) {
     m_deviceId = Utils::CreateUUID();
     m_settings->SetSetting("deviceid", m_deviceId);
@@ -927,6 +928,7 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
     std::string personaToken;
     if (!m_authClient->GetPersonaToken(personaToken))
       return PVR_ERROR_FAILED;
+
     personaToken = base64_decode(personaToken);
     kodi::Log(ADDON_LOG_DEBUG, "PersonaToken: %s", personaToken.c_str());
     personaToken.erase(0, m_accountBaseUrl.length());
@@ -934,23 +936,30 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
     kodi::Log(ADDON_LOG_DEBUG, "Account: %s", account.c_str());
     personaToken.erase(0, personaToken.find(":") + 1);
     kodi::Log(ADDON_LOG_DEBUG, "Token: %s", personaToken.c_str());
+
     kodi::Log(ADDON_LOG_DEBUG, "ReleasePid: %s", releasePid.c_str());
+
     std::string lkey = m_widevineLicenseAcquisitionUrl + "?account=" + Utils::UrlEncode(account) +
                                                          "&releasePid=" + releasePid +
                                                          "&token=" + personaToken +
                                                          "&schema=1.0";
+
+//    std::string lkey = m_widevineLicenseAcquisitionUrl + "?releasePid=" + releasePid +
+//                                                         "&schema=1.0";
+
     lkey += "|"
 //            "Origin=https://web2.magentatv.de"
 //            "&Referer=https://web2.magentatv.de"
 //            "&User-Agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
-            "User-Agent=" + ANDROID_USER_AGENT +
+            "User-Agent=" + Magenta2Parameters[m_platform].user_agent +
+//            "&Authorization=" + personaToken +
             "&Content-Type= "
             "|R{SSM}|";
     kodi::Log(ADDON_LOG_DEBUG, "Licence Key: %s", lkey.c_str());
     properties.emplace_back(PVR_STREAM_PROPERTY_MIMETYPE, "application/xml+dash");
     properties.emplace_back(PVR_STREAM_PROPERTY_INPUTSTREAM, "inputstream.adaptive");
-    properties.emplace_back("inputstream.adaptive.manifest_headers", "User-Agent=" + ANDROID_USER_AGENT);
-    properties.emplace_back("inputstream.adaptive.stream_headers", "User-Agent=" + ANDROID_USER_AGENT);
+    properties.emplace_back("inputstream.adaptive.manifest_headers", "User-Agent=" + Magenta2Parameters[m_platform].user_agent);
+    properties.emplace_back("inputstream.adaptive.stream_headers", "User-Agent=" + Magenta2Parameters[m_platform].user_agent);
     //properties.emplace_back("inputstream.adaptive.license_key", lkey);
     std::string urlFirst;
     std::string urlSecond;

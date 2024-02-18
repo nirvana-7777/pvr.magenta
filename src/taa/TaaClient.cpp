@@ -31,6 +31,7 @@ TaaClient::TaaClient(CSettings* setting, HttpClient* httpclient, Sam3Client* sam
   m_dcCtsPersonaToken.clear();
 //  m_personaToken = m_settings->GetMagenta2PersonaToken();
   m_deviceId = m_settings->GetMagentaDeviceID();
+  m_platform = m_settings->GetTerminalType();
 }
 
 
@@ -54,7 +55,7 @@ bool TaaClient::UpdateTaa(std::string& dcCtsPersonaToken)
 
   std::string url = m_taaUrl;
   std::string body = "{\"keyValue\": \"" + IDM + "/" + APPVERSION2 + "/" + "TokenChannelParams(id=Tv)/TokenDeviceParams(id=" + m_deviceId +
-                     ", model=" + MODEL + ", os=" + OS + ")/DE/telekom\","
+                     ", model=" + Magenta2Parameters[m_platform].device_name + ", os=" + Magenta2Parameters[m_platform].firmware + ")/DE/telekom\","
                      "\"accessToken\": \"" + m_sam3AccessToken + "\"," +
                      "\"accessTokenSource\": \"" + IDM + "\"," +
                      "\"appVersion\": \"" + APPVERSION2 + "\"," +
@@ -62,8 +63,8 @@ bool TaaClient::UpdateTaa(std::string& dcCtsPersonaToken)
                      "\"id\": \"Tv\"}," +
                      "\"device\": {" +
                      "\"id\": \"" + m_deviceId + "\"," +
-                     "\"model\": \"" + MODEL + "\"," +
-                     "\"os\": \"" + OS + "\" }," +
+                     "\"model\": \"" + Magenta2Parameters[m_platform].device_name + "\"," +
+                     "\"os\": \"" + Magenta2Parameters[m_platform].firmware + "\" }," +
                      "\"natco\": \"DE\"," +
                      "\"type\": \"telekom\"}";
 

@@ -18,8 +18,9 @@
 
 static const std::string BOOTSTRAP_URL = "https://prod.dcm.telekom-dienste.de/v1/settings/{configGroupId}/bootstrap?";
 static const std::string WINDOWS_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-static const std::string ANDROID_USER_AGENT = "Dalvik/2.1.0 (Linux; U; Android 11; SHIELD Android TV Build/RQ1A.210105.003) ((2.00T_ATV::3.134.4462::mdarcy::FTV_OTT_DT))";
+//static const std::string ANDROID_USER_AGENT = "Dalvik/2.1.0 (Linux; U; Android 11; SHIELD Android TV Build/RQ1A.210105.003) ((2.00T_ATV::3.134.4462::mdarcy::FTV_OTT_DT))";
 //static const std::string CONFIG_GROUP_ID = "web-mtv";
+/*
 static const std::string CONFIG_GROUP_ID = "atv-androidtv";
 static const std::string CONFIG_GROUP_ID_ONE = "";
 static const std::string CONFIG_GROUP_ID_MOBILE = "android-mobile";
@@ -32,7 +33,7 @@ static const std::string APPNAME = "MagentaTV";
 static const std::string APPVERSION = "104180";
 static const std::string FIRMWARE = "API level 30";
 static const std::string RUNTIMEVERSION = "1";
-
+*/
 static const int MAX_CHANNEL_ENTRIES = 100;
 static const uint64_t TIMEBUFFER2 = 4 * 60 * 60; //4h time buffer
 static const long KBM2 = 150000; // 150 MB
@@ -242,6 +243,7 @@ private:
   std::string m_accountId;
   std::string m_locationIdUri;
   std::string m_mpxAccountUri;
+  int m_platform;
   Magenta2Lock m_currentLock;
   Magenta2Ngiss m_ngiss;
 };

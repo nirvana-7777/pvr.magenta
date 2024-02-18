@@ -18,14 +18,14 @@ public:
   SsoClient(CSettings* settings, HttpClient* httpclient);
   ~SsoClient();
 
-  bool GetPersonaToken(std::string& personaToken);
+//  bool GetPersonaToken(std::string& personaToken);
   std::string SSOLogin();
-  bool SSOAuthenticate(const std::string& code, const std::string& state);
+  bool SSOAuthenticate(const std::string& code, const std::string& state, std::string& personaToken);
 
 private:
 
   CSettings* m_settings;
   HttpClient* m_httpClient;
 
-  std::string m_personaToken;
+//  std::string m_personaToken;
 };
