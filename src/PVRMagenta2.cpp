@@ -903,7 +903,7 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
 
   std::string src;
   std::string releasePid;
-  GetStreamParameters(url + "?format=SMIL&formats=MPEG-DASH&tracking=true", src, releasePid);
+  GetStreamParameters(url + "?format=SMIL&formats=MPEG-DASH&tracking=true&clientId=player_" + m_deviceId, src, releasePid);
   if (src.empty()) {
     return PVR_ERROR_FAILED;
   }
@@ -952,7 +952,7 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
 //            "&Referer=https://web2.magentatv.de"
 //            "&User-Agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
             "User-Agent=" + Magenta2Parameters[m_platform].user_agent +
-//            "&Authorization=" + personaToken +
+//            "&Authorization=Basic " + personaToken +
             "&Content-Type= "
             "|R{SSM}|";
     kodi::Log(ADDON_LOG_DEBUG, "Licence Key: %s", lkey.c_str());
@@ -971,7 +971,7 @@ PVR_ERROR CPVRMagenta2::SetStreamProperties(std::vector<kodi::addon::PVRStreamPr
         properties.emplace_back("inputstream.adaptive.license_url", urlFirst);
         properties.emplace_back("inputstream.adaptive.license_url_append", urlSecond);
     }
-    properties.emplace_back("inputstream.adaptive.play_timeshift_buffer", playTimeshiftBuffer ? "true" : "false");
+//    properties.emplace_back("inputstream.adaptive.play_timeshift_buffer", playTimeshiftBuffer ? "true" : "false");
 //    properties.emplace_back("inputstream.adaptive.manifest_type", "mpd");
     properties.emplace_back("inputstream.adaptive.license_type", "com.widevine.alpha");
   }

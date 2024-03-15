@@ -45,7 +45,8 @@ static const Magenta2Parameter Magenta2Parameters[4] = {{
                                                 "104682",
                                                 "API level 30",
                                                 "1",
-                                                "okhttp/5.0.0-alpha.11"
+                                                "Mozilla/5.0 (Linux; Android 10; OTT-G1 Build/QT; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/90.0.4430.91 Mobile Safari/537.36"
+//                                                "okhttp/5.0.0-alpha.11"
                                               },
                                               {
                                                 //Web Client

@@ -431,11 +431,18 @@ bool Sam3Client::RemoteLogin(const std::string& auth_req_id, const std::string& 
 
 bool Sam3Client::GetAccessToken(const std::string& scope, std::string& accessToken)
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s] requested scope [%s]", __FUNCTION__, scope);
   //TODO: Not only taa
   if (!m_sam3AccessTokens.taa.empty())
     accessToken = m_sam3AccessTokens.taa;
   else
-    return RefreshToken(scope, accessToken);
+  {
+    if (!RefreshToken(scope, accessToken))
+    {
+      if (!LineAuth())
+        BackChannelAuth();
+      return RefreshToken(scope, accessToken);
+    }
+  }
   return true;
 }

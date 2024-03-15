@@ -158,6 +158,11 @@ std::string HttpClient::HttpRequest(const std::string& action, const std::string
     if (url.find("yo-digital.com") != std::string::npos) {
       curl.AddHeader("requestid", Utils::CreateUUID());
     }
+    if (url.find("wcps.t-online.de") != std::string::npos && (action == "GET")) {
+      curl.AddHeader("x-stbserialnumber", m_settings->GetMagentaDeviceID());
+      curl.AddHeader("dt-session-id", m_sessionId);
+      curl.AddHeader("dt-call-id", Utils::CreateUUID());
+    }
   }
 
   std::string content = HttpRequestToCurl(curl, action, url, postData, statusCode);
