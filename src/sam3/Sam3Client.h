@@ -51,7 +51,7 @@ public:
   void SetAuthorizeTokenUrl(const std::string& url);
   bool InitSam3();
   bool Sam3Login(std::string& personaToken);
-  bool ReAuthenticate(std::string& personaToken);
+  bool ReAuthenticate(const std::string& grant);
   bool GetAccessToken(const std::string& scope, std::string& accessToken);
 /*
   std::string GetPersonaToken() {

@@ -131,9 +131,16 @@ Sam3Client::Sam3Client(CSettings* setting, HttpClient* httpclient, SsoClient* ss
   m_refreshToken = m_settings->GetMagentaRefreshToken();
 }
 
-bool Sam3Client::ReAuthenticate(std::string& personaToken)
+bool Sam3Client::ReAuthenticate(const std::string& grant)
 {
-  return m_ssoClient->SSOAuthenticate("", "", personaToken);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s]", __FUNCTION__);
+
+  if (grant == GRANTREMOTELOGIN)
+  {
+    return BackChannelAuth();
+  }
+  return false;
+//  return m_ssoClient->SSOAuthenticate("", "", personaToken);
 }
 
 Sam3Client::~Sam3Client()
@@ -143,7 +150,7 @@ Sam3Client::~Sam3Client()
 
 bool Sam3Client::InitSam3()
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s]", __FUNCTION__);
 
   GetAuthMethods();
   //TODO: Remove call to LineAuth
@@ -186,7 +193,7 @@ bool Sam3Client::InitSam3()
 
 bool Sam3Client::Sam3Login(std::string& personaToken)
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s]", __FUNCTION__);
   int statusCode = 0;
   std::string result;
 //  std::string url = m_authorization_endpoint +
@@ -294,7 +301,7 @@ bool Sam3Client::Sam3Login(std::string& personaToken)
 
 bool Sam3Client::LineAuth()
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s]", __FUNCTION__);
 
   if (m_authorizeTokensUrl.empty() || m_deviceToken.empty())
     return false;
@@ -330,7 +337,7 @@ bool Sam3Client::LineAuth()
 
 bool Sam3Client::BackChannelAuth()
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s]", __FUNCTION__);
 
   if (m_bcAuthStart.empty())
     return false;
@@ -369,7 +376,7 @@ bool Sam3Client::BackChannelAuth()
 
 bool Sam3Client::GetToken(const std::string& grantType, const std::string& scope, const std::string& credential1, const std::string& credential2, std::string& accessToken)
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s]", __FUNCTION__);
 
   if (m_token_endpoint.empty() || m_refreshToken.empty())
     return false;
@@ -419,19 +426,19 @@ bool Sam3Client::GetToken(const std::string& grantType, const std::string& scope
 
 bool Sam3Client::RefreshToken(const std::string& scope, std::string& accessToken)
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s]", __FUNCTION__);
   return (GetToken(GRANTREFRESHTOKEN, scope, m_refreshToken, "", accessToken));
 }
 
 bool Sam3Client::RemoteLogin(const std::string& auth_req_id, const std::string& auth_req_sec, std::string& accessToken)
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s]", __FUNCTION__);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s]", __FUNCTION__);
   return (GetToken(GRANTREMOTELOGIN, "", auth_req_id, auth_req_sec, accessToken));
 }
 
 bool Sam3Client::GetAccessToken(const std::string& scope, std::string& accessToken)
 {
-  kodi::Log(ADDON_LOG_DEBUG, "function call: [%s] requested scope [%s]", __FUNCTION__, scope);
+  kodi::Log(ADDON_LOG_DEBUG, "[Sam3] function call: [%s] requested scope [%s]", __FUNCTION__, scope.c_str());
   //TODO: Not only taa
   if (!m_sam3AccessTokens.taa.empty())
     accessToken = m_sam3AccessTokens.taa;

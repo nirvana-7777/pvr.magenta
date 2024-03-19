@@ -126,6 +126,5 @@ bool AuthClient::GetPersonaToken(std::string& personaToken)
 
 bool AuthClient::ReLogin()
 {
-
-  return true;
+  return m_sam3Client->ReAuthenticate(GRANTREMOTELOGIN);
 }
