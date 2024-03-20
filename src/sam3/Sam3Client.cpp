@@ -137,7 +137,12 @@ bool Sam3Client::ReAuthenticate(const std::string& grant)
 
   if (grant == GRANTREMOTELOGIN)
   {
-    return BackChannelAuth();
+    if (BackChannelAuth())
+    {
+      return RefreshToken("taa", m_sam3AccessTokens.taa);
+    }
+    else
+      return false;
   }
   return false;
 //  return m_ssoClient->SSOAuthenticate("", "", personaToken);
