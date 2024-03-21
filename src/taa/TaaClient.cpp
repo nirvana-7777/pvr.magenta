@@ -47,16 +47,14 @@ bool TaaClient::UpdateTaa(std::string& dcCtsPersonaToken)
   if (m_taaUrl.empty())
     return false;
 
-  if (m_sam3AccessToken.empty())
-  {
-    if (!m_sam3Client->GetAccessToken("taa", m_sam3AccessToken))
-      return false;
-  }
+  std::string taaAccessToken;
+  if (!m_sam3Client->GetAccessToken("taa", taaAccessToken))
+    return false;
 
   std::string url = m_taaUrl;
   std::string body = "{\"keyValue\": \"" + IDM + "/" + APPVERSION2 + "/" + "TokenChannelParams(id=Tv)/TokenDeviceParams(id=" + m_deviceId +
                      ", model=" + Magenta2Parameters[m_platform].device_name + ", os=" + Magenta2Parameters[m_platform].firmware + ")/DE/telekom\","
-                     "\"accessToken\": \"" + m_sam3AccessToken + "\"," +
+                     "\"accessToken\": \"" + taaAccessToken + "\"," +
                      "\"accessTokenSource\": \"" + IDM + "\"," +
                      "\"appVersion\": \"" + APPVERSION2 + "\"," +
                      "\"channel\": {" +

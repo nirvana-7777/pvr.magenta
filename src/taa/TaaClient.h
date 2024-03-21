@@ -32,7 +32,7 @@ private:
   HttpClient* m_httpClient;
   Sam3Client* m_sam3Client;
 
-  std::string m_sam3AccessToken;
+//  std::string m_sam3AccessToken;
   std::string m_deviceId;
   std::string m_taaUrl;
   std::string m_TaaAccessToken;
