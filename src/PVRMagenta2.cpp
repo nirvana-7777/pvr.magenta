@@ -1110,7 +1110,7 @@ bool CPVRMagenta2::GetGenre(int& primaryType, int& secondaryType, const std::str
       return true;
     }
   }
-  kodi::Log(ADDON_LOG_DEBUG, "Not found primary %s and secondary %s", primaryGenre.c_str(), secondaryGenre.c_str());
+//  kodi::Log(ADDON_LOG_DEBUG, "Not found primary %s and secondary %s", primaryGenre.c_str(), secondaryGenre.c_str());
   return false;
 }
 
@@ -1163,6 +1163,9 @@ void CPVRMagenta2::AddEPGEntry(const int& channelNumber, const rapidjson::Value&
   tag.SetUniqueBroadcastId(static_cast<unsigned int>(guid));
   tag.SetUniqueChannelId(static_cast<unsigned int>(channelNumber));
   tag.SetTitle(Utils::JsonStringOrEmpty(epgItem, "title"));
+  std::string title = Utils::JsonStringOrEmpty(epgItem, "title");
+  kodi::Log(ADDON_LOG_DEBUG, "Adding EPG item: %s", title.c_str());
+
   tag.SetPlot(Utils::JsonStringOrEmpty(epgItem, "description"));
   tag.SetPlotOutline(Utils::JsonStringOrEmpty(epgItem, "shortDescription"));
 
