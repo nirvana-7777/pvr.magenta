@@ -1304,7 +1304,7 @@ bool CPVRMagenta2::GetEPGFeed(const int& channelNumber, const std::string& baseU
     return false;
   }
 
-  if (!doc.HasMember("entries"))
+  if (!doc.HasMember("entries") || (doc["entries"].GetType() == 0))
   {
     kodi::Log(ADDON_LOG_ERROR, "Failed to get EPG feed");
     return false;
@@ -1315,10 +1315,10 @@ bool CPVRMagenta2::GetEPGFeed(const int& channelNumber, const std::string& baseU
   const rapidjson::Value& entries = doc["entries"];
   for (rapidjson::SizeType i = 0; i < entries.Size(); i++)
   {
-    if (!entries[i].HasMember("listings"))
+    if (!entries[i].HasMember("listings") || (entries[i]["listings"].GetType() == 0))
     {
       kodi::Log(ADDON_LOG_ERROR, "Failed to get EPG listings");
-      return false;
+      //return false;
     }
     const rapidjson::Value& listings = entries[i]["listings"];
     for (rapidjson::SizeType j = 0; j < listings.Size(); j++)
@@ -1347,7 +1347,7 @@ bool CPVRMagenta2::GetEPGFeed(const int& channelNumber, const std::string& baseU
           return false;
         }
 
-        if (!doc2.HasMember("entries"))
+        if (!doc2.HasMember("entries") || (doc2["entries"].GetType() == 0))
         {
           kodi::Log(ADDON_LOG_ERROR, "Failed to get Programs feed");
           return false;

@@ -35,3 +35,5 @@ v21.8.1
 - Init some variables
 v21.9.0
 - Implement Magenta TV 2.0
+v21.9.1
+- Fix EPG bug
